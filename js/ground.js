@@ -4,7 +4,8 @@
    minimap image.
    ================================================================ */
 const Ground = (() => {
-  const CS = 256, GS = 2, MAXC = 140;
+  // iOS Safari caps total canvas memory per page and kills canvases past it, so keep fewer chunks there
+  const CS = 256, GS = 2, MAXC = IS_IOS ? 90 : 140;
   const cache = new Map(), chunkFeat = new Map(), decals = new Map();
   let frame = 0;
   const key = (cx, cy) => cx * 1000 + cy;
@@ -89,7 +90,9 @@ const Ground = (() => {
     if (fs) for (const f of fs) drawFeature(g, f);
     const ds = decals.get(key(cx, cy)); if (ds) for (const d of ds) drawDecal(g, d);
     const c = { cv, g, used: frame }; cache.set(key(cx, cy), c);
-    if (cache.size > MAXC) { let old = null, ok = 0; for (const [k, v] of cache) if (!old || v.used < old.used) { old = v; ok = k; } cache.delete(ok); }
+    if (cache.size > MAXC) { let old = null, ok = 0; for (const [k, v] of cache) if (!old || v.used < old.used) { old = v; ok = k; } cache.delete(ok);
+      // iOS frees a canvas's memory only when it's garbage-collected, which can be too late: release it now
+      if (IS_IOS) for (const m of old.mips || [old.cv]) { m.width = m.height = 0; } }
     return c;
   }
   function addDecal(d, r) {

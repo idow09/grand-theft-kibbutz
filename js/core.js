@@ -3,6 +3,16 @@
    core.js — math, RNG, noise, geometry, input
    ================================================================ */
 const TAU = Math.PI * 2;
+// iPhone / iPad (iPadOS reports itself as a Mac with touch). Everything gated on this is iOS-only.
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+// iOS 15 and older have no canvas roundRect; only filled in where it's missing
+if (typeof CanvasRenderingContext2D !== 'undefined' && !CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+    r = Math.max(0, Math.min(Array.isArray(r) ? r[0] || 0 : r || 0, Math.abs(w) / 2, Math.abs(h) / 2));
+    this.moveTo(x + r, y); this.arcTo(x + w, y, x + w, y + h, r); this.arcTo(x + w, y + h, x, y + h, r);
+    this.arcTo(x, y + h, x, y, r); this.arcTo(x, y, x + w, y, r); this.closePath();
+  };
+}
 // anonymous event count on GoatCounter (no cookies, nothing personal); does nothing when blocked or offline
 function track(name) { try { if (window.goatcounter && goatcounter.count) goatcounter.count({ path: name, title: name, event: true }); } catch (e) { } }
 const rnd = (a, b) => a + Math.random() * (b - a);

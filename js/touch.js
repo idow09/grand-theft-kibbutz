@@ -89,6 +89,8 @@ function touchEnd(e) {
   }
 }
 cv.addEventListener('touchend', touchEnd, { passive: false });
+// iOS only unlocks Web Audio from touchend (touchstart doesn't count as a user gesture there)
+if (IS_IOS) cv.addEventListener('touchend', () => { if (window.Audio2) Audio2.init(); });
 cv.addEventListener('touchcancel', touchEnd, { passive: false });
 addEventListener('keydown', () => { if (TOUCH.on && !isCoarse) { TOUCH.on = false; TOUCH.stick = null; TOUCH.att = TOUCH.hb = false; resize(); } });
 

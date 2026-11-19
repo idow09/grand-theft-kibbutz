@@ -6,8 +6,13 @@
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let VW = 0, VH = 0, DPR = 1;
 const QUALITY = { low: false, acc: 0, n: 0 };
-function resize() { const tch = typeof TOUCH !== 'undefined' && TOUCH.on; DPR = Math.min(QUALITY.low ? 1 : tch ? 1.5 : 2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight; cv.width = VW * DPR; cv.height = VH * DPR; shadowCv = null; lightCv = null; }
+function resize() { const tch = typeof TOUCH !== 'undefined' && TOUCH.on; DPR = Math.min(QUALITY.low ? 1 : tch ? 1.5 : 2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight; cv.width = VW * DPR; cv.height = VH * DPR; shadowCv = null; lightCv = null;
+  // iOS Safari: 100vh is taller than the visible area (it ignores the toolbar), so the canvas got stretched,
+  // the bottom controls slid under the toolbar and taps landed off target. Pin the canvas to the real size.
+  if (IS_IOS) { cv.style.width = VW + 'px'; cv.style.height = VH + 'px'; }
+}
 addEventListener('resize', resize);
+if (IS_IOS) { addEventListener('orientationchange', () => setTimeout(resize, 300)); if (window.visualViewport) visualViewport.addEventListener('resize', resize); }
 const CAM = { x: 3150, y: 2250, z: 1, hw: 600, hh: 400, mouse: null, sx: 0, sy: 0 };
 let shadowCv = null, lightCv = null, mouseScreen = null;
 addEventListener('mousemove', e => { mouseScreen = { x: e.clientX, y: e.clientY }; });
