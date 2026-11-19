@@ -150,7 +150,7 @@ function drawLogo(cx, top, maxW, maxH) {
   return h;
 }
 /* ---------------- menus ---------------- */
-const MENU = { sel: 0, items: [], mode: 'title', anim: 0 };
+const MENU = { sel: 0, items: [], mode: 'title', anim: 0, links: [] };
 function menuItems() {
   const disc = [`⭐ שווה לנסות (${Discover.count()}/${Discover.FEATS.length})`, 'discover'], share = ['📤 שלחו לחבר', 'share'];
   if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], disc, ['איך משחקים', 'controls'], share, ['קרדיטים', 'credits']].filter(Boolean);
@@ -167,7 +167,7 @@ function startShare() {
   MENU.mode = 'share'; MENU.sel = 0;
 }
 function shareAct(r) {
-  if (r === 'wa') window.open('https://wa.me/?text=' + encodeURIComponent(SHARE_TEXT + '\n' + shareUrl()), '_blank', 'noopener');
+  if (r === 'wa') openLink('https://wa.me/?text=' + encodeURIComponent(SHARE_TEXT + '\n' + shareUrl()));
   if (r === 'copy') {
     const ok = () => { MENU.flash = { t: 'הקישור הועתק! עכשיו להדביק לחברים', life: 2.5 }; Audio2.sfx('cash'); };
     try { navigator.clipboard.writeText(SHARE_TEXT + '\n' + shareUrl()).then(ok, () => { MENU.flash = { t: shareUrl(), life: 6 }; }); } catch (e) { MENU.flash = { t: shareUrl(), life: 6 }; }
@@ -184,6 +184,7 @@ function menuNav(r) {
 }
 function menuInput() {
   const items = menuItems();
+  if (mouseClicked && mouseScreen) for (const l of MENU.links) if (mouseScreen.x > l.x && mouseScreen.x < l.x + l.w && mouseScreen.y > l.y && mouseScreen.y < l.y + l.h) { openLink(l.url); return null; }
   if (P('ArrowDown', 'KeyS')) { MENU.sel = (MENU.sel + 1) % items.length; Audio2.sfx('click'); }
   if (P('ArrowUp', 'KeyW')) { MENU.sel = (MENU.sel - 1 + items.length) % items.length; Audio2.sfx('click'); }
   MENU.sel = Math.min(MENU.sel, items.length - 1);
@@ -194,7 +195,7 @@ function menuInput() {
   return null;
 }
 function drawMenu() {
-  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); MENU.links = [];
   const title = MENU.mode === 'title';
   const gr = ctx.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, 'rgba(10,12,20,.72)'); gr.addColorStop(.5, 'rgba(10,12,20,.35)'); gr.addColorStop(1, 'rgba(10,12,20,.85)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
   const tz = Math.min(1, VW / 820, VH / 620);
@@ -246,14 +247,27 @@ function drawCredits() {
   const w = Math.min(600, VW - 32), x = VW / 2 - w / 2, short = VH < 560, y = short ? 14 : VH * .14;
   const bio = 'עדו וייס, קיבוצניק (כמעט) מלידה, אבל עד היום מרגיש סוג ב׳, כי ההורים היו תושבים, אז שילמתי על שירותים וכלליות בחדר האוכל. היום חבר קיבוץ גאה ואבא לשלוש קיבוצניקיות קטנות שנולדו פה, בקיבוץ סעד.';
   const lines = wrap(bio, w - 56, short ? 15 : 17), lh = short ? 21 : 26;
-  const h = (short ? 116 : 150) + lines.length * lh;
+  const h = (short ? 168 : 222) + lines.length * lh;
   panel(x, y, w, h, .86, 16);
   T('GRAND THEFT KIBBUTZ', VW / 2, y + (short ? 26 : 36), short ? 17 : 21, '#9be26b', 'center', { dir: 'ltr', w: 800 });
   let yy = y + (short ? 58 : 76);
   for (const l of lines) { T(l, VW / 2, yy, short ? 15 : 17, '#eef3f6', 'center', { w: 500, stroke: false }); yy += lh; }
   yy += short ? 6 : 10; T('idow09@gmail.com', VW / 2, yy, short ? 14 : 16, '#9fd8ff', 'center', { dir: 'ltr', w: 600, stroke: false });
   yy += short ? 24 : 32; T('קוד, גרפיקה וסאונד: Claude (Anthropic)', VW / 2, yy, short ? 12 : 13, '#8a96a0', 'center', { w: 500, stroke: false });
+  yy += short ? 26 : 36; menuLink('⭐ קוד פתוח ב-GitHub', GITHUB_URL, VW / 2, yy, short ? 14 : 16);
+  yy += short ? 24 : 32; T('פרודיה של מעריצים. אין קשר ל-Rockstar Games או ל-Grand Theft Auto.', VW / 2, yy, short ? 11 : 12, '#8a96a0', 'center', { w: 500, stroke: false });
+  yy += short ? 16 : 19; T('הקיבוץ והדמויות בדיוניים. כל דמיון לוותיק שאתם מכירים מקרי בהחלט.', VW / 2, yy, short ? 11 : 12, '#8a96a0', 'center', { w: 500, stroke: false });
 }
+const GITHUB_URL = 'https://github.com/idow09/grand-theft-kibbutz';
+// a clickable / tappable line of text in a menu page
+function menuLink(text, url, cx, cy, fs) {
+  ctx.font = `600 ${fs}px ${FONT}`; const w = ctx.measureText(text).width + 24, h = fs + 14;
+  const hov = mouseScreen && Math.abs(mouseScreen.x - cx) < w / 2 && Math.abs(mouseScreen.y - cy) < h / 2;
+  ctx.fillStyle = hov ? 'rgba(155,226,107,.22)' : 'rgba(155,226,107,.1)'; ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h / 2, w, h, h / 2); ctx.fill();
+  T(text, cx, cy, fs, hov ? '#c8f5a8' : '#9be26b', 'center', { stroke: false });
+  MENU.links.push({ x: cx - w / 2, y: cy - h / 2, w, h, url });
+}
+function openLink(url) { const w = window.open(url, '_blank', 'noopener'); if (!w) location.href = url; }
 function drawControls() {
   const L = TOUCH.on ? [
     ['תנועה / נהיגה', 'ג׳ויסטיק משמאל'], ['ריצה', 'ג׳ויסטיק עד הסוף'], ['כניסה / יציאה / טלפון', 'כפתור ירוק'], ['תקיפה / ירי', 'כפתור אדום'], ['החלפת נשק', '⇄'],
