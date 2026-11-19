@@ -153,8 +153,8 @@ function drawLogo(cx, top, maxW, maxH) {
 const MENU = { sel: 0, items: [], mode: 'title', anim: 0, links: [] };
 function menuItems() {
   const disc = [`⭐ שווה לנסות (${Discover.count()}/${Discover.FEATS.length})`, 'discover'], share = ['📤 שלחו לחבר', 'share'];
-  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], disc, ['איך משחקים', 'controls'], share, ['קרדיטים', 'credits']].filter(Boolean);
-  if (MENU.mode === 'pause') return [['חזרה למשחק', 'resume'], ['מפה', 'map'], disc, [`מוזיקה: ${Math.round(Audio2.vol.music * 10)}`, 'music'], [`צלילים: ${Math.round(Audio2.vol.sfx * 10)}`, 'sfx'], ['איך משחקים', 'controls'], share, ['קרדיטים', 'credits'], ['משחק חדש', 'new']];
+  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], disc, ['איך משחקים', 'controls'], share, ['אודות', 'credits']].filter(Boolean);
+  if (MENU.mode === 'pause') return [['חזרה למשחק', 'resume'], ['מפה', 'map'], disc, [`מוזיקה: ${Math.round(Audio2.vol.music * 10)}`, 'music'], [`צלילים: ${Math.round(Audio2.vol.sfx * 10)}`, 'sfx'], ['איך משחקים', 'controls'], share, ['אודות', 'credits'], ['משחק חדש', 'new']];
   if (MENU.mode === 'share') return [['וואטסאפ', 'wa'], ['העתקת קישור', 'copy'], ['חזרה', 'back']];
   return [['חזרה', 'back']];
 }
@@ -241,13 +241,13 @@ function drawMenu() {
     panel(VW / 2 - w / 2, y - h / 2, w, h, .8, 12);
     T('💻 מומלץ לשחק במחשב', VW / 2, y - (short ? 8 : 10), short ? 14 : 16, '#ffd84a', 'center', { stroke: false });
     T('עם מקלדת ומסך גדול. בטלפון זה עובד, אבל פחות נוח', VW / 2, y + (short ? 9 : 12), short ? 11 : 12, '#dde6ea', 'center', { stroke: false });
-  } else if (title) T('v2 · חיצים + Enter · או עכבר', VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
+  } else if (title) T(`חיצים + Enter · או עכבר · ${GAME_VERSION}`, VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
 }
 function drawCredits() {
   const w = Math.min(600, VW - 32), x = VW / 2 - w / 2, short = VH < 560, y = short ? 14 : VH * .14;
   const bio = 'עדו וייס, קיבוצניק (כמעט) מלידה, אבל עד היום מרגיש סוג ב׳, כי ההורים היו תושבים, אז שילמתי על שירותים וכלליות בחדר האוכל. היום חבר קיבוץ גאה ואבא לשלוש קיבוצניקיות קטנות שנולדו פה, בקיבוץ סעד.';
   const lines = wrap(bio, w - 56, short ? 15 : 17), lh = short ? 21 : 26;
-  const h = (short ? 168 : 222) + lines.length * lh;
+  const h = (short ? 186 : 246) + lines.length * lh;
   panel(x, y, w, h, .86, 16);
   T('GRAND THEFT KIBBUTZ', VW / 2, y + (short ? 26 : 36), short ? 17 : 21, '#9be26b', 'center', { dir: 'ltr', w: 800 });
   let yy = y + (short ? 58 : 76);
@@ -257,8 +257,14 @@ function drawCredits() {
   yy += short ? 26 : 36; menuLink('⭐ קוד פתוח ב-GitHub', GITHUB_URL, VW / 2, yy, short ? 14 : 16);
   yy += short ? 24 : 32; T('פרודיה של מעריצים. אין קשר ל-Rockstar Games או ל-Grand Theft Auto.', VW / 2, yy, short ? 11 : 12, '#8a96a0', 'center', { w: 500, stroke: false });
   yy += short ? 16 : 19; T('הקיבוץ והדמויות בדיוניים. כל דמיון לוותיק שאתם מכירים מקרי בהחלט.', VW / 2, yy, short ? 11 : 12, '#8a96a0', 'center', { w: 500, stroke: false });
+  yy += short ? 18 : 24; T(GAME_VERSION, VW / 2, yy, short ? 11 : 12, '#5d6a74', 'center', { dir: 'ltr', stroke: false });
 }
 const GITHUB_URL = 'https://github.com/idow09/grand-theft-kibbutz';
+// the build stamp tools/bump.js puts on the script URLs (?v=YYYYMMDDHHMM) doubles as the version shown to players
+const GAME_VERSION = (() => {
+  const s = document.querySelector('script[src*="hud.js"]'), m = s && /v=(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)/.exec(s.src);
+  return m ? `v${m[1]}.${m[2]}.${m[3]}-${m[4]}${m[5]}` : "dev";
+})();
 // a clickable / tappable line of text in a menu page
 function menuLink(text, url, cx, cy, fs) {
   ctx.font = `600 ${fs}px ${FONT}`; const w = ctx.measureText(text).width + 24, h = fs + 14;
