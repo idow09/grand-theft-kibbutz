@@ -23,8 +23,9 @@ function placePlayerStart() {
 function drawLoading() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const gr = ctx.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, '#1d3b2a'); gr.addColorStop(1, '#0d1610'); ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
-  T('GRAND THEFT KIBBUTZ', VW / 2, VH * .4, Math.min(52, VW / 14), '#ffd84a', 'center', { dir: 'ltr', w: 900 });
-  const w = Math.min(420, VW - 60), x = VW / 2 - w / 2, y = VH * .55;
+  if (LOGO.complete && LOGO.naturalWidth) drawLogo(VW / 2, VH * .06, VW * .9, VH * .6);
+  else T('GRAND THEFT KIBBUTZ', VW / 2, VH * .4, Math.min(52, VW / 14), '#ffd84a', 'center', { dir: 'ltr', w: 900 });
+  const w = Math.min(420, VW - 60), x = VW / 2 - w / 2, y = VH * .74;
   ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fillRect(x, y, w, 8); ctx.fillStyle = '#9be26b'; ctx.fillRect(x, y, w * bootI / BOOT.length, 8);
   if (bootI < BOOT.length) T(BOOT[bootI][0] + '...', VW / 2, y + 32, 16, '#cfe', 'center', { w: 500, stroke: false });
 }

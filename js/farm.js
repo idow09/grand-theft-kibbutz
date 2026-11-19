@@ -75,13 +75,26 @@ const Farm = (() => {
     const t = MAP.plowing;
     if (t) { t.workT -= dt; if (t.workT <= 0 || t.dead || !t.towedBy) MAP.plowing = null; }
     if (MAP.plowing) {
-      if (egrets.length < 8 && Math.random() < dt * 1.5) { const a = Math.random() * TAU, e = mkPed('heron', t.x + Math.cos(a) * 260, t.y + Math.sin(a) * 260); e.state = 'held'; e.persistent = true; e.slot = egrets.length; e.side = Math.random() < .5 ? -1 : 1; egrets.push(e); }
+      if (egrets.length < 7 && Math.random() < dt * .6) { const a = Math.random() * TAU, e = mkPed('heron', t.x + Math.cos(a) * 260, t.y + Math.sin(a) * 260); e.state = 'held'; e.persistent = true; e.slot = egrets.length; e.side = Math.random() < .5 ? -1 : 1; egrets.push(e); }
       const c = Math.cos(t.a), s = Math.sin(t.a);
+      // real egrets don't tail the plough nose-to-bumper: they land on the fresh furrow, peck around,
+      // fall behind, then hop forward one or two at a time and land again
       for (const e of egrets) {
-        const back = 26 + (e.slot % 4) * 16, side = e.side * (8 + (e.slot % 3) * 12);
-        const tx = t.x - c * back - s * side, ty = t.y - s * back + c * side, dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy) || 1;
-        const sp = d > 45 ? 170 : Math.min(60, d * 2.5);
-        e.flying = d > 45; e.x += dx / d * sp * dt; e.y += dy / d * sp * dt; if (d > 3) e.a += angDiff(e.a, Math.atan2(dy, dx)) * Math.min(1, dt * 6); e.walk += dt * (e.flying ? 9 : sp * .15); e.vx = dx / d * sp; e.vy = dy / d * sp;
+        e.cool = (e.cool || 0) - dt;
+        const pd = dist(e.x, e.y, t.x, t.y);
+        if (e.hx === undefined || (e.cool <= 0 && !e.flying && (pd > 135 || pd < 36) && !egrets.some(o => o !== e && o.flying && o.hopT > 0))) {
+          e.bk = 40 + Math.random() * 50; e.sd = (Math.random() * 2 - 1) * 40;
+          e.flying = true; e.hopT = .25; e.cool = .8 + Math.random() * 1.2;
+        }
+        e.hopT = (e.hopT || 0) - dt;
+        // in the air the landing spot rides with the plough; once down it stays put on the furrow
+        if (e.flying) { e.hx = t.x - c * e.bk - s * e.sd; e.hy = t.y - s * e.bk + c * e.sd; }
+        if (!e.flying && Math.random() < dt * .5) { e.px = (Math.random() * 2 - 1) * 14; e.py = (Math.random() * 2 - 1) * 14; }
+        const tx = e.hx + (e.flying ? 0 : e.px || 0), ty = e.hy + (e.flying ? 0 : e.py || 0), dx = tx - e.x, dy = ty - e.y, d = Math.hypot(dx, dy) || 1;
+        let sp;
+        if (e.flying) { sp = Math.min(115, 30 + d * 1.6); if (d < 5) e.flying = false; e.walk += dt * (d < 45 ? 1.2 : 4.5); }
+        else { sp = d > 2 ? 16 : 0; e.walk += dt * sp * .09; }
+        e.x += dx / d * sp * dt; e.y += dy / d * sp * dt; if (d > 2) e.a += angDiff(e.a, Math.atan2(dy, dx)) * Math.min(1, dt * (e.flying ? 3 : 5)); e.vx = dx / d * sp; e.vy = dy / d * sp;
       }
     } else if (egrets.length) {
       for (const e of egrets) { e.state = 'fly'; e.timer = 5; const a = Math.random() * TAU; e.fx = Math.cos(a); e.fy = Math.sin(a); e.persistent = false; }

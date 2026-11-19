@@ -329,8 +329,21 @@ const SPR = (() => {
         else { g.fillStyle = '#2f8a56'; g.beginPath(); g.moveTo(-3, -2); g.lineTo(-16, -1.5); g.lineTo(-16, 1.5); g.lineTo(-3, 2); g.fill(); g.fillStyle = '#1b4fa0'; for (let x = -14; x < -4; x += 3) { circ(g, x, 0, .9); g.fill(); } }
         ell(g, 0, 0, 4.4, 3); g.fillStyle = '#1f5fbf'; g.fill(); circ(g, 4.4, 0, 1.8); g.fill(); g.fillStyle = '#e9c46a'; g.fillRect(5.8, -.4, 1.6, .8); g.strokeStyle = '#1f5fbf'; g.lineWidth = .5; g.beginPath(); g.moveTo(4, 0); g.lineTo(3, -2.5); g.moveTo(4, 0); g.lineTo(3.4, -2.8); g.stroke(); break; }
       case 'heron': {
-        if (mode === 'fly') { g.fillStyle = '#d9dde0'; g.beginPath(); g.moveTo(0, 0); g.lineTo(-4, -16 * (.6 + .4 * st)); g.lineTo(-9, -15 * (.6 + .4 * st)); g.lineTo(-5, 0); g.lineTo(-9, 15 * (.6 + .4 * st)); g.lineTo(-4, 16 * (.6 + .4 * st)); g.closePath(); g.fill(); outline(g, .3); }
-        ell(g, 0, 0, 6, 3); g.fillStyle = '#e8ecef'; g.fill(); outline(g, .3); g.strokeStyle = '#e8ecef'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(5, 0); g.lineTo(9, 0); g.stroke(); circ(g, 9.5, 0, 1.6); g.fillStyle = '#e8ecef'; g.fill(); g.fillStyle = '#e8b13a'; g.fillRect(10.5, -.5, 5, 1); break; }
+        // cattle egret: white, buff crown and yellow bill; wings are broad and rounded, flap is a slow fold
+        if (mode === 'fly') {
+          const k = .55 + .45 * Math.cos(ph);
+          for (const sg of [-1, 1]) {
+            g.fillStyle = '#f4f6f7'; g.beginPath(); g.moveTo(2.5, sg * 2); g.quadraticCurveTo(4, sg * 10 * k, 0, sg * 17 * k); g.quadraticCurveTo(-4, sg * 18 * k, -6, sg * 15 * k); g.quadraticCurveTo(-5, sg * 7 * k, -3, sg * 2); g.closePath(); g.fill(); outline(g, .28);
+            g.strokeStyle = 'rgba(150,160,168,.55)'; g.lineWidth = .7; g.beginPath(); g.moveTo(-1, sg * 16 * k); g.lineTo(-5, sg * 14 * k); g.stroke();
+          }
+          g.strokeStyle = '#3a3a2c'; g.lineWidth = .9; g.beginPath(); g.moveTo(-5, -.8); g.lineTo(-11, -1); g.moveTo(-5, .8); g.lineTo(-11, 1); g.stroke();
+        } else { g.strokeStyle = '#4a4a34'; g.lineWidth = .9; const sw = Math.sin(ph) * 1.6; g.beginPath(); g.moveTo(0, -1.2); g.lineTo(sw, -2.4); g.moveTo(0, 1.2); g.lineTo(-sw, 2.4); g.stroke(); }
+        ell(g, -.5, 0, 5.4, 2.7); g.fillStyle = '#f4f6f7'; g.fill(); outline(g, .3);
+        g.fillStyle = '#e6eaec'; ell(g, -4.5, 0, 2, 1.6); g.fill();
+        g.strokeStyle = '#f4f6f7'; g.lineWidth = 2; g.beginPath(); g.moveTo(4, 0); g.quadraticCurveTo(6, mode === 'fly' ? 0 : 1, 7, 0); g.stroke();
+        circ(g, 7.6, 0, 1.7); g.fillStyle = '#f4f6f7'; g.fill(); g.fillStyle = '#e7c48a'; circ(g, 7.4, 0, 1.1); g.fill();
+        g.fillStyle = '#f0c030'; g.beginPath(); g.moveTo(9, -.6); g.lineTo(12.5, 0); g.lineTo(9, .6); g.fill();
+        g.fillStyle = '#222'; g.fillRect(8.2, -1.1, .5, .5); g.fillRect(8.2, .6, .5, .5); break; }
     }
   }
   function animalSheet(t, v) {

@@ -137,6 +137,18 @@ function drawBigMap() {
   T('● טלפון משימות   ■ מוסך (מחיקת רוגז)   ₪ חנות   ● בלגן', VW / 2, VH - 16, 13, '#ccc', 'center', { w: 500 });
 }
 
+/* ---------------- logo ---------------- */
+const LOGO = new Image(); LOGO.src = 'img/logo.webp';
+// fit the sticker logo inside a box whose top-center is (cx, top); gentle bob so the title feels alive
+function drawLogo(cx, top, maxW, maxH) {
+  const r = LOGO.naturalWidth / LOGO.naturalHeight, h = Math.min(maxH, maxW / r), w = h * r;
+  const t = performance.now() / 1000, bob = Math.sin(t * 1.3) * h * .008;
+  ctx.save(); ctx.translate(cx, top + h / 2 + bob); ctx.rotate(Math.sin(t * .7) * .012);
+  ctx.shadowColor = 'rgba(0,0,0,.55)'; ctx.shadowBlur = 24; ctx.shadowOffsetY = 8;
+  ctx.drawImage(LOGO, -w / 2, -h / 2, w, h);
+  ctx.restore();
+  return h;
+}
 /* ---------------- menus ---------------- */
 const MENU = { sel: 0, items: [], mode: 'title', anim: 0 };
 function menuItems() {
@@ -160,7 +172,9 @@ function drawMenu() {
   const title = MENU.mode === 'title';
   const gr = ctx.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, 'rgba(10,12,20,.72)'); gr.addColorStop(.5, 'rgba(10,12,20,.35)'); gr.addColorStop(1, 'rgba(10,12,20,.85)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
   const tz = Math.min(1, VW / 820, VH / 620);
-  if (title || MENU.mode === 'pause') {
+  if ((title || MENU.mode === 'pause') && LOGO.complete && LOGO.naturalWidth) {
+    drawLogo(VW / 2, VH * .025, VW * .92, VH * (VH < 560 ? .41 : .46));
+  } else if (title || MENU.mode === 'pause') {
     ctx.save(); ctx.translate(VW / 2, VH * .2); ctx.scale(tz, tz); ctx.rotate(-.025);
     ctx.font = `900 58px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr';
     ctx.lineWidth = 10; ctx.strokeStyle = '#1a0e05'; ctx.strokeText('GRAND THEFT', 0, -40);

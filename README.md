@@ -1,5 +1,7 @@
 # Grand Theft Kibbutz · גרנד תאפט קיבוץ
 
+<p align="center"><img src="img/logo.webp" alt="Grand Theft Kibbutz logo" width="480"></p>
+
 משחק בסגנון GTA2 (מבט מלמעלה), שמתרחש בקיבוץ. אלימות "רכה": מי שחוטף מתעלף לכמה שניות, משאיר מטבעות וקם עצבני.
 
 ### 🎮 [לשחק עכשיו בדפדפן](https://idow09.github.io/grand-theft-kibbutz/)
