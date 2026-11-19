@@ -465,7 +465,7 @@ function playerTick(dt) {
     if (m > 0) { mx /= m; my /= m; pl.vx += (mx * sp - pl.vx) * Math.min(1, dt * 12); pl.vy += (my * sp - pl.vy) * Math.min(1, dt * 12); if (!(att && (pl.wp === 'soaker' || pl.wp === 'ext'))) pl.a += angDiff(pl.a, Math.atan2(my, mx)) * Math.min(1, dt * 14); pl.walk += dt * sp * .11; }
     else { pl.vx *= Math.exp(-12 * dt); pl.vy *= Math.exp(-12 * dt); }
     if (mouseDown && CAM.mouse) pl.a = Math.atan2(CAM.mouse.y - pl.y, CAM.mouse.x - pl.x);
-    pl.x += pl.vx * dt; pl.y += pl.vy * dt; collideStatic(P, 6.5);
+    pl.x += pl.vx * dt; pl.y += pl.vy * dt; collideStatic(pl, 6.5);
     for (const v of actV) { if (Math.abs(v.x - pl.x) > 70 || Math.abs(v.y - pl.y) > 70) continue; for (const c of vehCircles(v)) { const dx = pl.x - c.x, dy = pl.y - c.y, d = Math.hypot(dx, dy), rr = c.r + 6.5; if (d < rr && d > 0) { pl.x += dx / d * (rr - d); pl.y += dy / d * (rr - d); } } }
     Combat.playerAttack(dt, att && !pl._att, att);
     Audio2.setEngine('none', 0);
