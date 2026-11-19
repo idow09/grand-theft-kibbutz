@@ -63,9 +63,9 @@ function buildTextures() {
   scatter(c, 12, 60, (g, x, y, r) => { g.fillStyle = 'rgba(120,110,95,.35)'; g.fillRect(x, y, 2, 2); });
   TEX.path = c;
   // --- interlocking pavers (mishtalvot) ---
-  c = mkCanvas(TEX_PX, TEX_PX); { const g = c.getContext('2d'), r = RNG(71); const bw = 32, bh = 16;
+  c = mkCanvas(TEX_PX, TEX_PX); { const g = c.getContext('2d'), r = RNG(71); const bw = 16, bh = 8;
     for (let y = 0; y < TEX_PX; y += bh) for (let x = -bw; x < TEX_PX; x += bw) {
-      const ox = ((y / bh) % 2) * bw / 2, base = r() < .12 ? [168, 92, 78] : [185 + r() * 18, 180 + r() * 14, 168 + r() * 10];
+      const ox = ((y / bh) % 2) * bw / 2, base = r() < .07 ? [168, 92, 78] : [185 + r() * 18, 180 + r() * 14, 168 + r() * 10];
       g.fillStyle = `rgb(${base[0] | 0},${base[1] | 0},${base[2] | 0})`; g.fillRect(x + ox + 1, y + 1, bw - 2, bh - 2);
       g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(x + ox + 1, y + 1, bw - 2, 2);
     }

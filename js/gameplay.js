@@ -50,13 +50,13 @@ const Player = {
   },
   fallOff(sp) {
     const v = this.veh; if (!v) return; this.exit(true);
-    this.vx = v.vx * .6; this.vy = v.vy * .6; this.hurt(Math.min(18, sp * .08)); this.stumble = .7; G.msg('!נפלת מה' + v.d.name, '#ffb36b');
+    this.vx = v.vx * .6; this.vy = v.vy * .6; this.hurt(Math.min(18, sp * .08)); this.stumble = .7; G.msg('נפלת מה!' + v.d.name, '#ffb36b');
   },
   enter(v) {
-    if (v.dead) { G.msg('...ה' + v.d.name + ' הזה כבר לא יזוז', '#ffb36b'); return; }
+    if (v.dead) { G.msg('ה...' + v.d.name + ' הזה כבר לא יזוז', '#ffb36b'); return; }
     if (v.driver && v.driver !== 'player') {
       const d = v.driver; ejectDriver(v); Combat.koPed(d, true, 4.5, 'pulled');
-      say(d, d.type === 'elder' ? '!גנב! הקלנועית שלי' : '!היי! זה שלי', 2.2);
+      say(d, d.type === 'elder' ? 'גנב! הקלנועית שלי!' : 'היי! זה שלי!', 2.2);
       if (v.ai !== 'chase') G.crime(1.4, v.x, v.y);
     }
     v.ai = null; v.driver = 'player'; this.veh = v; pressed.KeyE = pressed.Enter = false;
@@ -99,7 +99,7 @@ const Combat = (() => {
   function animalHit(p, kx, ky) {
     switch (p.type) {
       case 'chicken': p.state = 'flee'; p.timer = 2.5; Audio2.sfx('cluck', p.x, p.y); FX.burst(p.x, p.y, ['#fff', '#eee'], 5, 50, 2); break;
-      case 'cow': Audio2.sfx('moo', p.x, p.y); say(p, '!מוווו', 1.4); p.vx += kx * 50; p.vy += ky * 50; break;
+      case 'cow': Audio2.sfx('moo', p.x, p.y); say(p, 'מוווו!', 1.4); p.vx += kx * 50; p.vy += ky * 50; break;
       case 'dog': case 'cat': p.state = 'flee'; p.timer = 4; Audio2.sfx(p.type === 'dog' ? 'bark' : 'cluck', p.x, p.y); break;
       case 'heron': p.state = 'fly'; p.timer = 5; p.fx = kx || 1; p.fy = ky || 0; break;
       default: p.state = 'flee'; p.timer = 2;
@@ -111,12 +111,12 @@ const Combat = (() => {
     p.hp -= dmg; p.vx = kx * 160; p.vy = ky * 160; FX.burst(p.x, p.y, ['#fff', '#ffe14a'], 4, 70, 2.4);
     if (p.hp <= 0) { koPed(p, byPlayer, undefined, kind); return; }
     if (p.state === 'chase') return;
-    if (p.brawl && byPlayer && kind === 'punch') { p.state = 'fight'; p.timer = 8; say(p, pick(['!מה אתה רוצה ממני', '!בוא נראה אותך']), 1.5); }
+    if (p.brawl && byPlayer && kind === 'punch') { p.state = 'fight'; p.timer = 8; say(p, pick(['מה אתה רוצה ממני!', 'בוא נראה אותך!']), 1.5); }
     else { p.state = 'flee'; p.timer = 4; say(p, pick(LINES.hurt), 1.3); }
     if (byPlayer) G.crime(kind === 'punch' ? .5 : .35, p.x, p.y);
   }
   function vehicleHitsPed(v, p, sp) {
-    if (p.animal) { if (p.type === 'cow') { p.vx += v.vx * .25; p.vy += v.vy * .25; v.vx *= .75; v.vy *= .75; Audio2.sfx('moo', p.x, p.y); say(p, '!מוווו', 1.4); } else animalHit(p, v.vx / sp, v.vy / sp); return; }
+    if (p.animal) { if (p.type === 'cow') { p.vx += v.vx * .25; p.vy += v.vy * .25; v.vx *= .75; v.vy *= .75; Audio2.sfx('moo', p.x, p.y); say(p, 'מוווו!', 1.4); } else animalHit(p, v.vx / sp, v.vy / sp); return; }
     const dx = p.x - v.x, dy = p.y - v.y, d = Math.hypot(dx, dy) || 1;
     p.vx = v.vx * 1.2 + dx / d * 60; p.vy = v.vy * 1.2 + dy / d * 60;
     const byP = v.driver === 'player';
@@ -154,7 +154,7 @@ const Combat = (() => {
       if (p.state !== 'chase' && p.state !== 'fight') { p.state = 'flee'; p.timer = 2; }
       if (p.wet > 1) { koPed(p, true, 3.6, kind); p.wet = 0; }
     }
-    for (const v of actV) { if (v === P.veh || !v.driver || v.driver === 'player') continue; if (dist(v.x, v.y, x + fx * range * .6, y + fy * range * .6) < range * .5) { v.stun = Math.max(v.stun, ext ? 1.4 : .6); if (Math.random() < .05) say(v.driver, ext ? '!אני לא רואה כלום' : '!רטוב לי', 1.3); } }
+    for (const v of actV) { if (v === P.veh || !v.driver || v.driver === 'player') continue; if (dist(v.x, v.y, x + fx * range * .6, y + fy * range * .6) < range * .5) { v.stun = Math.max(v.stun, ext ? 1.4 : .6); if (Math.random() < .05) say(v.driver, ext ? 'אני לא רואה כלום!' : 'רטוב לי!', 1.3); } }
     if (ext && Math.random() < .2) Ground.addDecal({ k: 'powder', x: x + fx * rnd(20, 70), y: y + fy * rnd(20, 70), r: rnd(6, 12) });
     if (Math.random() < dt * 2) G.crime(.25);
     if (P.inv[kind] <= 0) { G.msg(ext ? 'המטף התרוקן' : 'נגמרו המים', '#ffd'); cycleWeapon(); }
@@ -169,7 +169,7 @@ const Combat = (() => {
       for (const q of peds) { if (q.state === 'ko' || q.veh || q.flying) continue; if (dist(q.x, q.y, hx, hy) < q.r + 9) { hitPed(q, 1.5, fx, fy, true, 'punch'); hit = true; } }
       pgrid.query(hx - 12, hy - 12, hx + 12, hy + 12, _gq);
       for (const o of _gq) if (!o.broken && o.need === 0 && dist(o.x, o.y, hx, hy) < (o.r || 10) + 8) { breakProp(o, null, 0); hit = true; }
-      for (const v of actV) if (v.driver && v.driver !== 'player' && dist(v.x, v.y, hx, hy) < v.d.W / 2 + 10 && Math.hypot(v.vx, v.vy) < 60) { v.stun = 1.6; say(v.driver, '!היי', 1.3); G.crime(.8, v.x, v.y); hit = true; }
+      for (const v of actV) if (v.driver && v.driver !== 'player' && dist(v.x, v.y, hx, hy) < v.d.W / 2 + 10 && Math.hypot(v.vx, v.vy) < 60) { v.stun = 1.6; say(v.driver, 'היי!', 1.3); G.crime(.8, v.x, v.y); hit = true; }
       if (hit) Audio2.sfx('punch', P.x, P.y);
     } else if (P.wp === 'toto' && pressedNow) fireFrom(P.x, P.y, P.a);
     else if (P.wp === 'balloon' && pressedNow && P.inv.balloon > 0) {
@@ -185,7 +185,7 @@ const Combat = (() => {
     Audio2.sfx('splash', b.x1, b.y1); FX.burst(b.x1, b.y1, ['#7fd0ff', '#bfe8ff', '#fff'], 24, 130, 3.5);
     Ground.addDecal({ k: 'splat', x: b.x1, y: b.y1, r: 9, col: 'rgba(60,110,140,.22)' });
     for (const q of peds) if (q.state !== 'ko' && !q.veh && dist(q.x, q.y, b.x1, b.y1) < 56) { if (q.animal) animalHit(q, 0, 0); else koPed(q, true, 3.4, 'balloon'); }
-    for (const v of actV) if (v !== Player.veh && dist(v.x, v.y, b.x1, b.y1) < 50) { v.stun = 2; if (v.driver && v.driver !== 'player') { say(v.driver, '!הקרציה הזו', 1.5); G.crime(.6, v.x, v.y); } }
+    for (const v of actV) if (v !== Player.veh && dist(v.x, v.y, b.x1, b.y1) < 50) { v.stun = 2; if (v.driver && v.driver !== 'player') { say(v.driver, 'הקרציה הזו!', 1.5); G.crime(.6, v.x, v.y); } }
   }
   const _gq = [];
   function tick(dt) {
@@ -194,7 +194,7 @@ const Combat = (() => {
       if (Math.random() < .5) FX.parts.push({ x: s.x, y: s.y, z: 4, vx: 0, vy: 0, vz: 0, life: .15, max: .15, col: '#fff', sz: 1.2, k: 'drop' });
       if (buildingAt(s.x, s.y)) hit = true;
       if (!hit) for (const q of peds) { if (q.veh || q.state === 'ko' || q.flying) continue; if (Math.abs(q.x - s.x) < 10 && Math.abs(q.y - s.y) < 10 && dist(q.x, q.y, s.x, s.y) < q.r + 3) { hitPed(q, 1.6, s.vx / 560, s.vy / 560, true, 'toto'); hit = true; break; } }
-      if (!hit) for (const v of actV) { if (v === Player.veh) continue; if (dist(v.x, v.y, s.x, s.y) < v.d.W / 2 + 4) { if (v.driver && v.driver !== 'player') { v.stun = 2.2; say(v.driver, '!אוי! הטוטו', 1.4); G.crime(.7, v.x, v.y); if (G.rampage && G.rampage.onVehShot) G.rampage.onVehShot(v); } hit = true; break; } }
+      if (!hit) for (const v of actV) { if (v === Player.veh) continue; if (dist(v.x, v.y, s.x, s.y) < v.d.W / 2 + 4) { if (v.driver && v.driver !== 'player') { v.stun = 2.2; say(v.driver, 'אוי! הטוטו!', 1.4); G.crime(.7, v.x, v.y); if (G.rampage && G.rampage.onVehShot) G.rampage.onVehShot(v); } hit = true; break; } }
       if (!hit) { pgrid.query(s.x - 6, s.y - 6, s.x + 6, s.y + 6, _gq); for (const o of _gq) { if (o.broken) continue; if (o.need === 0 && shapePush(o, s.x, s.y, 2)) { breakProp(o, null, 0); hit = true; break; } if (o.solid && shapePush(o, s.x, s.y, 1)) { hit = true; break; } } }
       if (hit || s.life <= 0) { FX.burst(s.x, s.y, ['#fff', '#ffe14a'], 4, 60, 2); shots.splice(i, 1); }
     }
@@ -230,7 +230,7 @@ function spawnChaser(lvl) {
     const v = mkVeh(kind, n.x, n.y, Math.atan2(P0.y - n.y, P0.x - n.x), kind === 'kalnoit' ? pick(['#e8c547', '#d9d9de', '#c0392b']) : kind === 'tractor' ? '#c8352b' : kind === 'pickup' ? '#f2f2f2' : '#f2f2f2');
     const dr = mkPed(kind === 'pickup' ? 'guard' : 'elder', n.x, n.y); dr.veh = v; dr.state = 'drive'; v.driver = dr; v.ai = 'chase'; v.chaser = true;
     v.beacon = kind === 'pickup' ? '#ffd23f' : kind === 'cart' ? '#ff8a1a' : kind === 'tractor' ? '#ff3b3b' : null;
-    say(dr, kind === 'cart' ? '!ועד הקיבוץ! עצור' : kind === 'pickup' ? '!קב"ט! לעצור בצד' : kind === 'tractor' ? '!רכז המשק בדרך' : '!עצור', 2.2);
+    say(dr, kind === 'cart' ? 'ועד הקיבוץ! עצור!' : kind === 'pickup' ? 'קב"ט! לעצור בצד!' : kind === 'tractor' ? 'רכז המשק בדרך!' : 'עצור!', 2.2);
     if (kind === 'cart') Audio2.sfx('megaphone', v.x, v.y);
     return;
   }
@@ -243,7 +243,7 @@ function wantedTick(dt) {
   if (!near) { G.unseen += dt; if (G.unseen > 3 && G.heat > 0) G.heat = Math.max(0, G.heat - (.3 + .12 * G.level) * dt); }
   else G.unseen = Math.min(G.unseen, 1);
   const lvl = heatLevel();
-  if (lvl > G.level) { G.msg(['', '!סבתא ראתה אותך', '!הזקנים יוצאים לקלנועיות', '!ועד הקיבוץ התכנס', '!הקב"ט בדרך', '!רכז המשק עלה על הטרקטור'][lvl], '#ff9b6b'); Audio2.sfx('alert'); }
+  if (lvl > G.level) { G.msg(['', 'סבתא ראתה אותך!', 'הזקנים יוצאים לקלנועיות!', 'ועד הקיבוץ התכנס!', 'הקב"ט בדרך!', 'רכז המשק עלה על הטרקטור!'][lvl], '#ff9b6b'); Audio2.sfx('alert'); }
   else if (lvl < G.level && lvl === 0) { G.msg('הוועד שכח ממך... בינתיים', '#9be26b'); releaseChasers(); }
   G.level = lvl;
   if (G.level > 0 && Player.out <= 0) {
@@ -253,6 +253,11 @@ function wantedTick(dt) {
     for (const q of peds) if (q.state === 'chase') cnt++; for (const v of vehicles) if (v.ai === 'chase') cnt++;
     if (G.spawnT <= 0 && cnt < want) { G.spawnT = 2.4 - G.level * .25; spawnChaser(G.level); }
     for (const v of actV) if (v.beacon && Math.random() < dt * .3) Audio2.sfx(v.type === 'cart' ? 'megaphone' : 'siren', v.x, v.y);
+    // chasers hop off their vehicle to grab a player on foot
+    if (!Player.veh) for (const v of actV) {
+      if (v.ai !== 'chase' || !v.driver || v.driver === 'player' || v.dead) continue;
+      if (dist(v.x, v.y, P0.x, P0.y) < v.d.L / 2 + 45 && Math.hypot(v.vx, v.vy) < 45) { const d = v.driver; ejectDriver(v); v.ai = null; v.beacon = v.beacon; d.state = 'chase'; d.chaser = true; say(d, pick(['עצור שם!', 'אל תזוז!', 'תפסתי אותך!']), 1.5); }
+    }
   }
   // grab / bust
   let grabbing = 0; const psp = Player.veh ? Math.hypot(Player.veh.vx, Player.veh.vy) : Math.hypot(Player.vx, Player.vy);
@@ -273,7 +278,7 @@ function faint() {
   if (Player.out > 0) return; Player.out = 3.4; Player.outKind = 'faint'; G.combo = 0;
   if (Player.veh) Player.exit(true);
   const loss = Math.floor(G.money * .12); G.money -= loss;
-  G.bigBanner('!התעלפת', `התעוררת במרפאה. הטיפול עלה ${loss} ₪`, '#ff8a8a'); Audio2.sfx('lose');
+  G.bigBanner('התעלפת!', `התעוררת במרפאה. הטיפול עלה ${loss} ₪`, '#ff8a8a'); Audio2.sfx('lose');
   Missions.fail('התעלפת באמצע המשימה'); Rampage.stop(false);
 }
 function busted() {
@@ -281,7 +286,7 @@ function busted() {
   if (Player.veh) Player.exit(true);
   const loss = Math.min(G.money, 80 + G.level * 60); G.money -= loss;
   Player.inv = { fist: 1, toto: 0, soaker: 0, balloon: 0, ext: 0 }; Player.wp = 'fist';
-  G.bigBanner('!נתפסת', pick(['הוחזרת לאסיפה כללית. היא נמשכה 4 שעות', 'נשלחת לתורנות כלים בחדר האוכל', 'הוועד החליט: שבוע בלי קלנועית']) + ` · קנס: ${loss} ₪`, '#ffcf6b'); Audio2.sfx('lose');
+  G.bigBanner('נתפסת!', pick(['הוחזרת לאסיפה כללית. היא נמשכה 4 שעות', 'נשלחת לתורנות כלים בחדר האוכל', 'הוועד החליט: שבוע בלי קלנועית']) + ` · קנס: ${loss} ₪`, '#ffcf6b'); Audio2.sfx('lose');
   Missions.fail('נתפסת על ידי הוועד'); Rampage.stop(false);
 }
 function respawnPlayer() {
@@ -332,8 +337,8 @@ const Pickups = (() => {
         case 'balloon': P.inv.balloon += 6; if (P.wp === 'fist') P.wp = 'balloon'; G.msg('בלוני מים! +6', '#7fd0ff'); break;
         case 'soaker': P.inv.soaker += 15; if (P.wp === 'fist') P.wp = 'soaker'; G.msg('רובה מים! 15 שניות', '#7fd0ff'); break;
         case 'ext': P.inv.ext += 12; if (P.wp === 'fist') P.wp = 'ext'; G.msg('מטף! 12 שניות של אבקה', '#fff'); break;
-        case 'egg': G.eggs[t.id] = 1; const n = Object.keys(G.eggs).length; G.money += 500; G.bigBanner('!ביצת זהב', `${n}/12 · +500 ₪`, '#ffd84a', 2.5); Audio2.sfx('cash');
-          if (n === 12) { G.money += 5000; G.bigBanner('!כל ביצי הזהב', 'בונוס ענק: 5000 ₪', '#ffd84a'); } Save.save(); break;
+        case 'egg': G.eggs[t.id] = 1; const n = Object.keys(G.eggs).length; G.money += 500; G.bigBanner('ביצת זהב!', `${n}/12 · +500 ₪`, '#ffd84a', 2.5); Audio2.sfx('cash');
+          if (n === 12) { G.money += 5000; G.bigBanner('כל ביצי הזהב!', 'בונוס ענק: 5000 ₪', '#ffd84a'); } Save.save(); break;
         case 'rampage': if (G.rampage || G.mission) continue; Rampage.start(t.kind, null, t.id); break;
       }
       Audio2.sfx('pickup'); t.alive = false; t.respawn = t.t === 'egg' || t.t === 'rampage' ? 0 : 60;
@@ -389,12 +394,12 @@ function interactTick() {
 /* ================================================================ RAMPAGES (בלגן) */
 const Rampage = (() => {
   const DEF = {
-    tractor: { title: '!בלגן בשדה', desc: 'שבור 25 דברים תוך 60 שניות — כל נזק שווה כפול', time: 60, need: 25, double: true, reward: 1200 },
-    trample: { title: '!טרקטור משתולל', desc: 'שבור 30 דברים תוך 75 שניות', time: 75, need: 30, reward: 1000 },
-    balloon: { title: '!מלחמת בלונים', desc: 'הפל 12 אנשים עם בלוני מים תוך 60 שניות', time: 60, need: 12, give: { balloon: 20 }, wp: 'balloon', reward: 1000 },
-    toto: { title: '!טוטו אחד-אחד-איקס', desc: 'הפל 12 אנשים עם אקדח טוטו תוך 60 שניות', time: 60, need: 12, give: { toto: 60 }, wp: 'toto', reward: 1000 },
-    derby: { title: '!דרבי קלנועיות', desc: 'קלקל 6 רכבים תוך 90 שניות', time: 90, need: 6, reward: 1200 },
-    chickens: { title: '!מצעד הלול', desc: 'הפל 10 אנשים בכל דרך תוך 50 שניות', time: 50, need: 10, reward: 900 },
+    tractor: { title: 'בלגן בשדה!', desc: 'שבור 25 דברים תוך 60 שניות — כל נזק שווה כפול', time: 60, need: 25, double: true, reward: 1200 },
+    trample: { title: 'טרקטור משתולל!', desc: 'שבור 30 דברים תוך 75 שניות', time: 75, need: 30, reward: 1000 },
+    balloon: { title: 'מלחמת בלונים!', desc: 'הפל 12 אנשים עם בלוני מים תוך 60 שניות', time: 60, need: 12, give: { balloon: 20 }, wp: 'balloon', reward: 1000 },
+    toto: { title: 'טוטו אחד-אחד-איקס!', desc: 'הפל 12 אנשים עם אקדח טוטו תוך 60 שניות', time: 60, need: 12, give: { toto: 60 }, wp: 'toto', reward: 1000 },
+    derby: { title: 'דרבי קלנועיות!', desc: 'קלקל 6 רכבים תוך 90 שניות', time: 90, need: 6, reward: 1200 },
+    chickens: { title: 'מצעד הלול!', desc: 'הפל 10 אנשים בכל דרך תוך 50 שניות', time: 50, need: 10, reward: 900 },
   };
   function start(kind, veh, id) {
     const d = DEF[kind]; let n = 0;
@@ -409,7 +414,7 @@ const Rampage = (() => {
   function tick(dt) {
     const R = G.rampage; if (!R) return;
     R.tickVeh(); R.t -= dt;
-    if (R.n >= R.need) { G.money += R.d.reward; if (R.id !== undefined) G.rampDone[R.id] = 1; G.rampage = null; G.bigBanner('!בלגן מושלם', `+${R.d.reward} ₪`, '#9be26b'); Audio2.sfx('win'); Save.save(); }
+    if (R.n >= R.need) { G.money += R.d.reward; if (R.id !== undefined) G.rampDone[R.id] = 1; G.rampage = null; G.bigBanner('בלגן מושלם!', `+${R.d.reward} ₪`, '#9be26b'); Audio2.sfx('win'); Save.save(); }
     else if (R.t <= 0) stop(true);
   }
   function stop(timeout) { const R = G.rampage; if (!R) return; G.rampage = null; if (timeout) { G.bigBanner('הבלגן נגמר', `${R.n}/${R.need}`, '#ccc', 2.5); Audio2.sfx('lose'); } }
@@ -438,7 +443,7 @@ function playerTick(dt) {
     c.steer = (K('KeyD', 'ArrowRight') ? 1 : 0) - (K('KeyA', 'ArrowLeft') ? 1 : 0); c.hb = K('Space');
     if (P('KeyH') && v.horn <= 0) {
       v.horn = .45; Audio2.sfx(v.d.horn || 'horn', v.x, v.y);
-      for (const q of peds) if (!q.veh && q.state !== 'ko' && !q.animal && dist(q.x, q.y, v.x, v.y) < 120 && (q.state === 'walk' || q.state === 'idle')) { q.state = 'flee'; q.timer = 1.5; say(q, '!היי', 1); }
+      for (const q of peds) if (!q.veh && q.state !== 'ko' && !q.animal && dist(q.x, q.y, v.x, v.y) < 120 && (q.state === 'walk' || q.state === 'idle')) { q.state = 'flee'; q.timer = 1.5; say(q, 'היי!', 1); }
       for (const q of peds) if (q.type === 'chicken' && dist(q.x, q.y, v.x, v.y) < 140) { q.state = 'flee'; q.timer = 2; }
     }
     // drive-by with toto / soaker, firing forward
@@ -449,7 +454,7 @@ function playerTick(dt) {
     Audio2.setEngine(v.dead ? 'none' : v.d.eng, clamp(sp / v.d.maxF, 0, 1) * (c.thr ? 1 : .7));
     // lawn offence
     const m = matAt(v.x, v.y);
-    if (MINFO[m].lawn && sp > 20) { if (G.crime(.32 * dt * (v.d.mass > 15 ? 1.8 : 1))) G.tip('lawn', '!אסור לנסוע על הדשא — הזקנים רואים הכל'); }
+    if (MINFO[m].lawn && sp > 20) { if (G.crime(.32 * dt * (v.d.mass > 15 ? 1.8 : 1))) G.tip('lawn', 'אסור לנסוע על הדשא — הזקנים רואים הכל!'); }
     // crops & mud
     if ((MINFO[m].crop || MINFO[m].lawn) && sp > 25) trample(v);
     if (P('KeyR')) { if (!v.d.radio) G.msg('אין רדיו ב' + v.d.name, '#ccc'); else { Audio2.setStation(Audio2.stationIndex + 1); G.radioCard = 3; } }

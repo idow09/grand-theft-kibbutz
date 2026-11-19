@@ -53,7 +53,7 @@ const Missions = (() => {
   function escape(o) {
     let stage = 0;
     return Object.assign({ markers: () => [], hud: () => stage === 0 ? `עצבן את הזקנים עד רמת רוגז ${o.lvl}` : 'עכשיו תתחמק! הרוגז צריך לרדת ל-0',
-      update() { if (stage === 0 && G.level >= o.lvl) { stage = 1; G.msg('!עכשיו תתחמק מהם', '#ffe14a'); Audio2.sfx('alert'); } if (stage === 1 && G.level === 0) return 'done'; } }, o);
+      update() { if (stage === 0 && G.level >= o.lvl) { stage = 1; G.msg('עכשיו תתחמק מהם!', '#ffe14a'); Audio2.sfx('alert'); } if (stage === 1 && G.level === 0) return 'done'; } }, o);
   }
   function stealBring(o) {
     const v = o.spawn(); v.mission = true; v.persistent = true; let got = false;
@@ -71,7 +71,7 @@ const Missions = (() => {
     return Object.assign({ markers: () => [c, { x: MAP.pen.x, y: MAP.pen.y, n: 'הרפת', dim: true }], hud: () => `הובל את שוש לרפת (${Math.round(dist(c.x, c.y, MAP.pen.x, MAP.pen.y))} מ')`,
       update(dt) {
         const p = P0(), d = dist(c.x, c.y, p.x, p.y), push = Player.veh ? 170 : 110;
-        if (d < push) { const k = (push - d) / push, dx = c.x - p.x, dy = c.y - p.y, l = Math.hypot(dx, dy) || 1; c.vx += dx / l * 260 * k * dt; c.vy += dy / l * 260 * k * dt; if (Math.random() < dt * .6) { Audio2.sfx('moo', c.x, c.y); say(c, pick(['!מוווו', '!מו?', '...מוווו']), 1.2); } }
+        if (d < push) { const k = (push - d) / push, dx = c.x - p.x, dy = c.y - p.y, l = Math.hypot(dx, dy) || 1; c.vx += dx / l * 260 * k * dt; c.vy += dy / l * 260 * k * dt; if (Math.random() < dt * .6) { Audio2.sfx('moo', c.x, c.y); say(c, pick(['מוווו!', 'מו?!', 'מוווו...']), 1.2); } }
         else { c.vx += rnd(-20, 20) * dt; c.vy += rnd(-20, 20) * dt; }
         const sp = Math.hypot(c.vx, c.vy); if (sp > 75) { c.vx *= 75 / sp; c.vy *= 75 / sp; }
         c.vx *= Math.exp(-1.2 * dt); c.vy *= Math.exp(-1.2 * dt); c.x += c.vx * dt; c.y += c.vy * dt; if (sp > 3) c.a += angDiff(c.a, Math.atan2(c.vy, c.vx)) * Math.min(1, dt * 4); c.walk += sp * dt * .1;
@@ -86,7 +86,7 @@ const Missions = (() => {
       { title: 'הפרה שוש ברחה', brief: 'שוש שוב ברחה מהרפת! היא מסתובבת באחד השדות בצפון. תדחוף אותה חזרה לרפת — פרות בורחות ממך, אז תגיע מהצד הנכון.', make: () => herdCow({ time: 240, reward: 350 }) },
       { title: 'חלב לצומת', brief: 'המכלית צריכה להגיע לצומת לפני שהחלב מחמיץ. ותביא אותה שלמה — הקיבוץ לא יקנה עוד אחת.', make: () => { const mt = vehicles.find(v => v.type === 'milktruck' && !v.dead) || mkVeh('milktruck', POI['הרפת'].x + 60, POI['הרפת'].y + 80, 0); mt.persistent = true; let fail = null;
           return { time: 200, reward: 450, markers: () => [Player.veh === mt ? pt('תחנת הדלק') : { x: mt.x, y: mt.y, n: 'המכלית' }], hud: () => Player.veh === mt ? `סע לצומת · נזק ${Math.round(100 - mt.hp / mt.d.hp * 100)}% (מקסימום 40%)` : 'היכנס למכלית החלב', update() { if (mt.hp < mt.d.hp * .6) return 'fail:המכלית נפגעה יותר מדי'; if (Player.veh === mt && near(pt('תחנת הדלק'), 60)) return 'done'; } }; } },
-      { title: 'מבצע קומביין', brief: 'הוועד השאיל את הקומביין שלנו לשדה הצפוני ולא החזיר. תביא אותו למוסך של שלומי. הוא איטי, אבל שום דבר לא עוצר אותו.', make: () => stealBring({ what: 'הקומביין', to: pt('מוסך שלומי'), time: 330, reward: 700, spawn: () => MAP.combineVeh && !MAP.combineVeh.dead ? MAP.combineVeh : mkVeh('combine', POI['הקומביין'].x, POI['הקומביין'].y, 0), onSteal: () => { G.heat = Math.max(G.heat, 3.2); G.msg('!רכז המשק ראה אותך לוקח את הקומביין', '#ff9b6b'); } }) },
+      { title: 'מבצע קומביין', brief: 'הוועד השאיל את הקומביין שלנו לשדה הצפוני ולא החזיר. תביא אותו למוסך של שלומי. הוא איטי, אבל שום דבר לא עוצר אותו.', make: () => stealBring({ what: 'הקומביין', to: pt('מוסך שלומי'), time: 330, reward: 700, spawn: () => MAP.combineVeh && !MAP.combineVeh.dead ? MAP.combineVeh : mkVeh('combine', POI['הקומביין'].x, POI['הקומביין'].y, 0), onSteal: () => { G.heat = Math.max(G.heat, 3.2); G.msg('רכז המשק ראה אותך לוקח את הקומביין!', '#ff9b6b'); } }) },
       { title: 'הסולארי של הוועד', brief: 'הוועד שם פאנלים סולאריים בשדה שהיה מיועד להרחבת הרפת. אני לא אומר לך מה לעשות. אבל יש שם טרקטור.', make: () => destroyCount({ what: 'פאנלים שנשברו', n: 20, time: 180, reward: 900, filter: p => p.t === 'solar', where: pt('השדה הסולארי') }) },
     ],
     youth: [
@@ -98,7 +98,7 @@ const Missions = (() => {
     kitchen: [
       { title: 'שניצל חם', brief: 'סיר שניצלים להרחבה. אם הוא מגיע קר, אני יודעת מי אשם.', make: () => deliver({ from: pt('חדר האוכל'), to: pt('ההרחבה'), item: 'סיר שניצלים', time: 80, reward: 280 }) },
       { title: 'תרנגולות במנוסה', brief: 'מישהו השאיר את הלול פתוח. שש תרנגולות מסתובבות בקיבוץ. בלי ביצים אין שקשוקה!', make: () => chickens({ n: 6, time: 140, reward: 380 }) },
-      { title: 'הקלנועית של שושנה', brief: 'שושנה מהבריכה חייבת לי כבר שנתיים. תביא לי את הקלנועית האדומה שלה לדלת האחורית של המטבח. היא תצעק. תתעלם.', make: () => { const pp = pt('הבריכה'); const ph = MAP.phones.find(p => p.f === 'kitchen'); return stealBring({ what: 'הקלנועית של שושנה', to: { x: ph.x, y: ph.y, n: 'דלת המטבח' }, time: 200, reward: 480, spawn: () => mkVeh('kalnoit', pp.x + 30, pp.y + 10, 0, '#c0392b'), onSteal: v => { const s = mkPed('elder', v.x + 20, v.y); s.state = 'chase'; say(s, '!זאת הקלנועית שלי', 2.5); G.heat = Math.max(G.heat, 3.1); } }); } },
+      { title: 'הקלנועית של שושנה', brief: 'שושנה מהבריכה חייבת לי כבר שנתיים. תביא לי את הקלנועית האדומה שלה לדלת האחורית של המטבח. היא תצעק. תתעלם.', make: () => { const pp = pt('הבריכה'); const ph = MAP.phones.find(p => p.f === 'kitchen'); return stealBring({ what: 'הקלנועית של שושנה', to: { x: ph.x, y: ph.y, n: 'דלת המטבח' }, time: 200, reward: 480, spawn: () => mkVeh('kalnoit', pp.x + 30, pp.y + 10, 0, '#c0392b'), onSteal: v => { const s = mkPed('elder', v.x + 20, v.y); s.state = 'chase'; say(s, 'זאת הקלנועית שלי!', 2.5); G.heat = Math.max(G.heat, 3.1); } }); } },
       { title: 'קוטג\' מהצומת', brief: 'הצרכנייה ריקה. יש קוטג\' במרכול בצומת. הוועד אסר על קניות מבחוץ, אז הם ירדפו אחריך. תביא את הארגזים לחדר האוכל.', make: () => deliver({ from: pt('תחנת הדלק'), to: pt('חדר האוכל'), item: 'ארגזי קוטג\'', time: 220, reward: 900, onPick: () => { G.heat = Math.max(G.heat, 5.6); } }) },
     ],
   };
@@ -125,9 +125,9 @@ const Missions = (() => {
       G.money += m.reward; G.respect[m.fac] = Math.min(100, G.respect[m.fac] + 20); const rv = FACT[m.fac].rival; G.respect[rv] = Math.max(-100, G.respect[rv] - 6);
       if (m.story) chain[m.fac]++;
       const allDone = Object.keys(CH).every(k => chain[k] >= CH[k].length);
-      G.bigBanner('!משימה הושלמה', `+${m.reward} ₪ · כבוד אצל ${FACT[m.fac].n}` + (m.story && chain[m.fac] === CH[m.fac].length ? ' · הסיפור של ' + FACT[m.fac].n + ' הושלם!' : ''), '#9be26b');
+      G.bigBanner('משימה הושלמה!', `+${m.reward} ₪ · כבוד אצל ${FACT[m.fac].n}` + (m.story && chain[m.fac] === CH[m.fac].length ? ' · הסיפור של ' + FACT[m.fac].n + ' הושלם!' : ''), '#9be26b');
       Audio2.sfx('win');
-      if (allDone && !G.done.all) { G.done.all = 1; setTimeout(() => G.bigBanner('!מלך הקיבוץ', 'השלמת את כל הסיפורים. הוועד מכנס אסיפת חירום', '#ffd84a', 6), 3500); G.money += 5000; }
+      if (allDone && !G.done.all) { G.done.all = 1; setTimeout(() => G.bigBanner('מלך הקיבוץ!', 'השלמת את כל הסיפורים. הוועד מכנס אסיפת חירום', '#ffd84a', 6), 3500); G.money += 5000; }
       Save.save();
     } else { G.respect[m.fac] = Math.max(-100, G.respect[m.fac] - 5); G.bigBanner('המשימה נכשלה', why || '', '#ff8a8a'); Audio2.sfx('lose'); }
   }
@@ -142,7 +142,7 @@ const Missions = (() => {
   function hostileTick(dt) {
     tomT -= dt; if (tomT > 0) return; tomT = .5;
     const typeFor = { cow: 'worker', youth: 'teen', kitchen: 'cook' };
-    for (const f in FACT) { if (G.respect[f] > -25) continue; for (const p of peds) { if (p.type !== typeFor[f] || p.state === 'ko' || p.veh) continue; const d = dist(p.x, p.y, P0().x, P0().y); if (d < 200 && d > 40 && Math.random() < .35) { Combat.throwTomato(p); say(p, '!בוגד', 1.2); } } }
+    for (const f in FACT) { if (G.respect[f] > -25) continue; for (const p of peds) { if (p.type !== typeFor[f] || p.state === 'ko' || p.veh) continue; const d = dist(p.x, p.y, P0().x, P0().y); if (d < 200 && d > 40 && Math.random() < .35) { Combat.throwTomato(p); say(p, 'בוגד!', 1.2); } } }
   }
   return { call, tick, fail, hostileTick, CH, chainState: () => Object.assign({}, chain), loadChain(s) { if (s) Object.assign(chain, s); }, get chain() { return chain; } };
 })();

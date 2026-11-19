@@ -319,7 +319,7 @@ function drawWeather(dt) {
   if (ENV.flash > 0) { ctx.fillStyle = `rgba(255,255,255,${ENV.flash * .55})`; ctx.fillRect(0, 0, VW, VH); }
 }
 function drawWorldText(g) {
-  const bub = (x, y, txt) => { g.font = 'bold 11px Arial'; g.direction = 'rtl'; const w = g.measureText(txt).width + 10; g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.roundRect(x - w / 2, y - 8, w, 16, 6); g.fill(); g.beginPath(); g.moveTo(x - 4, y + 7); g.lineTo(x + 2, y + 13); g.lineTo(x + 4, y + 7); g.fill(); g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, y); };
+  const bub = (x, y, txt) => { g.font = `600 11px ${FONT}`; g.direction = /^[A-Za-z]/.test(txt) ? 'ltr' : 'rtl'; const w = g.measureText(txt).width + 10; g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.roundRect(x - w / 2, y - 8, w, 16, 6); g.fill(); g.beginPath(); g.moveTo(x - 4, y + 7); g.lineTo(x + 2, y + 13); g.lineTo(x + 4, y + 7); g.fill(); g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, y); };
   for (const p of peds) if (p.sayL > 0 && p.sayT && inView(p.x, p.y, 40)) bub(p.x, p.y - (p.veh ? 26 : 20), p.sayT);
   for (const f of FX.floaters) { if (!inView(f.x, f.y, 30)) continue; g.globalAlpha = Math.min(1, f.life * 2); textOut(g, f.text, f.x, f.y, 13, f.col, 'center', 'ltr'); g.globalAlpha = 1; }
   if (G.interact && !G.shopMenu) textOut(g, G.interact.t, Player.x, Player.y - 26, 12, '#fff', 'center', 'rtl');

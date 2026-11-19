@@ -26,7 +26,7 @@ function drawHUD(dt) {
   by += Player.armor > 0 ? 44 : 34;
   for (let i = 0; i < 5; i++) { const on = i < G.level, fl = on && G.level >= 3 && Math.floor(G.time * 5) % 2; star(VW - pad - 12 - i * 28, by, 11, on ? (fl ? '#ff3b2f' : '#ff9b2f') : 'rgba(255,255,255,.16)'); }
   if (G.level > 0) T('רמת רוגז', VW - pad - 152, by, 12, '#ffb38a', 'right');
-  if (G.grab > 0) { by += 20; panel(bx - 4, by - 2, bw + 8, 16, .7, 5); ctx.fillStyle = '#ff3b3b'; ctx.fillRect(bx, by + 2, bw * G.grab, 8); T('!עוצרים אותך', bx + bw / 2, by + 6, 11, '#fff', 'center'); }
+  if (G.grab > 0) { by += 20; panel(bx - 4, by - 2, bw + 8, 16, .7, 5); ctx.fillStyle = '#ff3b3b'; ctx.fillRect(bx, by + 2, bw * G.grab, 8); T('עוצרים אותך!', bx + bw / 2, by + 6, 11, '#fff', 'center'); }
   // ---- clock & weather (top-left) ----
   panel(pad - 6, 12, 150, 44, .5, 8);
   T(clockStr(), pad + 40, 34, 20, ENV.night > .5 ? '#9fb8ff' : '#fff', 'center', { dir: 'ltr' });

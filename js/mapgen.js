@@ -59,7 +59,7 @@ function genMap(seed) {
     addArea(lot, M.ROAD, 40.15, { edge: '#9a958a', edgeW: 4 });
     deco(bboxOf(lot, 4), 40.3, g => { g.save(); g.translate(c[0], c[1]); g.rotate(a); g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 1.6; for (let x = -100; x <= 100; x += 25) { g.beginPath(); g.moveTo(x, -58); g.lineTo(x, -18); g.moveTo(x, 18); g.lineTo(x, 58); g.stroke(); } g.restore(); });
     addRoad([[p[0] - n[0] * 15, p[1] - n[1] * 15], [c[0] + n[0] * 20 - Math.cos(a) * 40, c[1] + n[1] * 20 - Math.sin(a) * 40]], 'asphalt', 22);
-    for (let x = -88; x <= 88; x += 25) for (const yy of [-38, 38]) if (R() < .7) { const q = rot(x, yy, a); park(R() < .25 ? 'van' : 'car', c[0] + q[0], c[1] + q[1], a + Math.PI / 2 + (R() < .5 ? Math.PI : 0)); }
+    for (let x = -84; x <= 84; x += 34) for (const yy of [-38, 38]) if (R() < .65) { const q = rot(x, yy, a); park(R() < .25 ? 'van' : 'car', c[0] + q[0], c[1] + q[1], a + Math.PI / 2 + (R() < .5 ? Math.PI : 0)); }
     poi('החניון', c[0], c[1]);
     // cypress avenue along the access road
     for (let k = 4; k < accPl.length * .35; k += 3) { const q = accPl[k], ta = plTan(accPl, k), nn = [-Math.sin(ta), Math.cos(ta)]; for (const sd of [-1, 1]) { const x = q[0] + nn[0] * 32 * sd, y = q[1] + nn[1] * 32 * sd; if (!nearRoad(x, y, 6) && !pointInPoly(x, y, lot)) addProp('cypress', x, y); } }

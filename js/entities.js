@@ -113,7 +113,7 @@ function vehPhysics(v, dt) {
 }
 function killVeh(v, why) {
   if (v.dead) return; v.dead = true; v.hp = 0;
-  if (v.driver && v.driver !== 'player') { const d = v.driver; ejectDriver(v); d.state = 'flee'; d.timer = 4; say(d, why === 'flood' ? '!המנוע הוצף' : '!הרכב שלי', 2); }
+  if (v.driver && v.driver !== 'player') { const d = v.driver; ejectDriver(v); d.state = 'flee'; d.timer = 4; say(d, why === 'flood' ? 'המנוע הוצף!' : 'הרכב שלי!', 2); }
   if (v.driver === 'player') G.msg(why === 'flood' ? 'המנוע הוצף! (E ליציאה)' : 'הרכב התקלקל! (E ליציאה)', '#ffb36b');
   FX.burst(v.x, v.y, why === 'flood' ? ['#bfe8ff', '#fff'] : ['#ddd', '#aaa', '#fff'], 18, 70, 5);
   Audio2.sfx(why === 'flood' ? 'splash' : 'crash', v.x, v.y);
@@ -171,7 +171,7 @@ function vehVsVeh(list) {
         const j2 = -1.3 * rv / (1 / ma + 1 / mb); a.vx += nx * j2 / ma; a.vy += ny * j2 / ma; b.vx -= nx * j2 / mb; b.vy -= ny * j2 / mb;
         const is = -rv; if (is > 65) { a.hp -= (is - 65) * .08 * mb / (ma + mb) * 1.7; b.hp -= (is - 65) * .08 * ma / (ma + mb) * 1.7; Audio2.sfx('crash', a.x, a.y);
           if (a.hp <= 0) killVeh(a); if (b.hp <= 0) killVeh(b);
-          if (a.driver === 'player' || b.driver === 'player') { G.shake = Math.min(9, G.shake + is / 45); const o = a.driver === 'player' ? b : a; if (o.driver && o.driver !== 'player') { say(o.driver, pick(['!אידיוט', '!תסתכל לאן אתה נוסע', '!הביטוח של המשק לא מכסה את זה']), 2); G.crime(o.ai === 'chase' ? .2 : .6, o.x, o.y); if (o.ai === 'wander' && o.driver.brawl && o.d.mass < 15) { o.ai = 'angry'; } } } }
+          if (a.driver === 'player' || b.driver === 'player') { G.shake = Math.min(9, G.shake + is / 45); const o = a.driver === 'player' ? b : a; if (o.driver && o.driver !== 'player') { say(o.driver, pick(['אידיוט!', 'תסתכל לאן אתה נוסע!', 'הביטוח של המשק לא מכסה את זה!']), 2); G.crime(o.ai === 'chase' ? .2 : .6, o.x, o.y); if (o.ai === 'wander' && o.driver.brawl && o.d.mass < 15) { o.ai = 'angry'; } } } }
       }
       done = true; break;
     } }
@@ -211,7 +211,7 @@ function aiWander(v, dt) {
   let blocked = false;
   for (const o of actV) { if (o === v || Math.abs(o.x - px) > 70 || Math.abs(o.y - py) > 70) continue; if (dist(px, py, o.x, o.y) < o.d.W / 2 + v.d.W / 2 + 4) { blocked = true; break; } }
   if (!blocked) for (const p of peds) { if (p.veh || Math.abs(p.x - px) > 50 || Math.abs(p.y - py) > 50) continue; if (dist(px, py, p.x, p.y) < v.d.W / 2 + p.r + 8) { blocked = true; if (p.state === 'walk' && Math.random() < .02 && v.d.horn) { Audio2.sfx(v.d.horn, v.x, v.y); } break; } }
-  if (!blocked && !Player.veh && dist(px, py, Player.x, Player.y) < v.d.W / 2 + 14) { blocked = true; if (Math.random() < .02) { Audio2.sfx(v.d.horn || 'horn', v.x, v.y); say(v.driver, pick(['!זוז', '!נו כבר', '!יש פה כביש']), 1.5); } }
+  if (!blocked && !Player.veh && dist(px, py, Player.x, Player.y) < v.d.W / 2 + 14) { blocked = true; if (Math.random() < .02) { Audio2.sfx(v.d.horn || 'horn', v.x, v.y); say(v.driver, pick(['זוז!', 'נו כבר!', 'יש פה כביש!']), 1.5); } }
   if (blocked) { ctrl.thr = v.vf > 10 ? -1 : 0; v.blocked += dt; } else v.blocked = Math.max(0, v.blocked - dt);
   if (v.blocked > 3.5) { v.rev = 1.1; v.blocked = 0; }
   if (v.rev > 0) { v.rev -= dt; ctrl.thr = -.8; ctrl.steer = -ctrl.steer; }
@@ -232,13 +232,13 @@ function aiChase(v, dt, tx, ty) {
 
 /* ---------------- AI: people & animals ---------------- */
 const LINES = {
-  elderAngry: ['!בושה', '!תרד מהדשא', '!בזמני לא היה ככה', '?מי אישר את זה', '!אני מדבר עם המזכיר', '!נו באמת', '!חוצפה', '!זה לא תקין', '!האסיפה תשמע על זה'],
+  elderAngry: ['בושה!', 'תרד מהדשא!', 'בזמני לא היה ככה!', 'מי אישר את זה?', 'אני מדבר עם המזכיר!', 'נו באמת!', 'חוצפה!', 'זה לא תקין!', 'האסיפה תשמע על זה!'],
   elderMumble: ['הדשא היה ירוק יותר פעם', 'אין כבוד לוועד', 'איפה הנוער של היום', 'בחדר האוכל נגמרו הגזרים', 'פעם היינו קוטפים כותנה ידנית', 'מי שם פה את הקלנועית?', 'ביום שישי יש שירה בציבור'],
-  kid: ['!תפוס אותי', '?איפה הכדור', '!אמא', '!יש לי חופש', '!טוטו'],
-  teen: ['...אחי', '?מה קורה', 'יש מסיבה במקלט', '?יש לך סיגריה... סתם', 'אין פה קליטה'],
-  volunteer: ['!Shalom', '?Where is the dining hall', '!Sababa', '?Is this the kibbutz', '!I love falafel'],
-  adult: ['?מה נשמע', 'צריך לתקן את ההשקיה', 'מי ראה את המפתחות של הטנדר?', 'יש תורנות מטבח היום', 'עוד שעה סידור עבודה'],
-  hurt: ['!אוי', '!עזרה', '!מה פתאום', '!איי', '!הצילו'],
+  kid: ['תפוס אותי!', 'איפה הכדור?', 'אמא!', 'יש לי חופש!', 'טוטו!'],
+  teen: ['אחי...', 'מה קורה?', 'יש מסיבה במקלט', 'יש לך סיגריה... סתם?', 'אין פה קליטה'],
+  volunteer: ['Shalom!', 'Where is the dining hall?', 'Sababa!', 'Is this the kibbutz?', 'I love falafel!'],
+  adult: ['מה נשמע?', 'צריך לתקן את ההשקיה', 'מי ראה את המפתחות של הטנדר?', 'יש תורנות מטבח היום', 'עוד שעה סידור עבודה'],
+  hurt: ['אוי!', 'עזרה!', 'מה פתאום!', 'איי!', 'הצילו!'],
 };
 function pedPickTarget(p, keep) {
   if (!p.node) { p.node = nearestNode(p.x, p.y, MASK_PED, 600); p.prev = null; if (!p.node) { p.tgt = { x: p.x + rnd(-50, 50), y: p.y + rnd(-50, 50) }; return; } }
@@ -258,18 +258,18 @@ function updatePed(p, dt) {
   else switch (p.state) {
     case 'ko': p.timer -= dt; if (p.timer <= 0) {
       p.hp = p.maxhp; p.wet = 0;
-      if (p.type === 'elder') { p.state = G.level > 0 ? 'chase' : 'walk'; say(p, pick(['...הו הו, מה זה היה', '!אני מתלונן בוועד', '!הגב שלי', '!חוצפן']), 2); G.crime(.6, p.x, p.y); }
-      else if (p.brawl && Math.random() < .6) { p.state = 'fight'; p.timer = 7; say(p, '!עכשיו תקבל', 1.6); }
+      if (p.type === 'elder') { p.state = G.level > 0 ? 'chase' : 'walk'; say(p, pick(['הו הו, מה זה היה...', 'אני מתלונן בוועד!', 'הגב שלי!', 'חוצפן!']), 2); G.crime(.6, p.x, p.y); }
+      else if (p.brawl && Math.random() < .6) { p.state = 'fight'; p.timer = 7; say(p, 'עכשיו תקבל!', 1.6); }
       else { p.state = 'flee'; p.timer = 3; }
       p.node = null; pedPickTarget(p);
     } break;
     case 'flee': { p.timer -= dt; let dx = p.x - (p.fx ?? px), dy = p.y - (p.fy ?? py); const l = Math.hypot(dx, dy) || 1; mx = dx / l; my = dy / l; spd = p.spd * (p.type === 'elder' ? 1.4 : 2.1);
       if (p.timer <= 0) { p.state = 'walk'; p.fx = p.fy = undefined; p.node = null; pedPickTarget(p); } break; }
     case 'fight': { p.timer -= dt; const tx = Player.veh ? Player.veh.x : px, ty = Player.veh ? Player.veh.y : py, dx = tx - p.x, dy = ty - p.y, l = Math.hypot(dx, dy) || 1; spd = p.spd * 1.8; mx = dx / l; my = dy / l;
-      if (l < 17 && p.cd <= 0 && !Player.veh && Player.out <= 0) { p.cd = .9; p.punch = .2; Player.hurt(6, p.x, p.y); say(p, pick(['!טפח', '!הנה', '!קח']), .8); Audio2.sfx('punch', p.x, p.y); }
+      if (l < 17 && p.cd <= 0 && !Player.veh && Player.out <= 0) { p.cd = .9; p.punch = .2; Player.hurt(6, p.x, p.y); say(p, pick(['טפח!', 'הנה!', 'קח!']), .8); Audio2.sfx('punch', p.x, p.y); }
       if (p.timer <= 0 || l > 420) { p.state = 'walk'; p.node = null; pedPickTarget(p); } break; }
     case 'chase': { const tx = Player.veh ? Player.veh.x : px, ty = Player.veh ? Player.veh.y : py, dx = tx - p.x, dy = ty - p.y, l = Math.hypot(dx, dy) || 1; spd = p.type === 'elder' ? 82 : 95; mx = dx / l; my = dy / l;
-      if (l < 17 && p.cd <= 0 && !Player.veh && Player.out <= 0) { p.cd = 1.1; p.punch = .2; Player.hurt(p.type === 'guard' ? 7 : 4, p.x, p.y); say(p, pick(['!הנה לך מקל', '!עצור', '!תפסתי אותך']), .9); Audio2.sfx('punch', p.x, p.y); }
+      if (l < 17 && p.cd <= 0 && !Player.veh && Player.out <= 0) { p.cd = 1.1; p.punch = .2; Player.hurt(p.type === 'guard' ? 7 : 4, p.x, p.y); say(p, pick(['הנה לך מקל!', 'עצור!', 'תפסתי אותך!']), .9); Audio2.sfx('punch', p.x, p.y); }
       if (Math.random() < .004) say(p, pick(LINES.elderAngry), 1.6); break; }
     case 'idle': p.timer -= dt; if (p.timer <= 0) { p.state = 'walk'; } break;
     case 'swim': break;
@@ -280,7 +280,7 @@ function updatePed(p, dt) {
       p.lt += dt; if (p.lt > 1.3) { if (dist(p.x, p.y, p.lx, p.ly) < 5 && p.state === 'walk') { const t = p.node; p.node = p.prev || t; p.prev = t; p.side = -p.side; pedPickTarget(p, true); } p.lx = p.x; p.ly = p.y; p.lt = 0; }
       if (d2p < 170 && p.sayL <= 0 && Math.random() < .0025) say(p, pick(LINES[p.type === 'elder' ? 'elderMumble' : p.type] || LINES.adult), 2.6);
       // dodge fast vehicles heading at us
-      if (Math.random() < .25) for (const v of actV) { const sp = Math.hypot(v.vx, v.vy); if (sp < 90 || Math.abs(v.x - p.x) > 90 || Math.abs(v.y - p.y) > 90) continue; const rx = p.x - v.x, ry = p.y - v.y, ahead = (rx * v.vx + ry * v.vy) / sp; if (ahead > 0 && ahead < 70 && Math.abs((rx * v.vy - ry * v.vx) / sp) < 16) { const s = (rx * v.vy - ry * v.vx) > 0 ? 1 : -1; p.vx += v.vy / sp * s * 220; p.vy += -v.vx / sp * s * 220; if (Math.random() < .5) say(p, pick(['!אוי', '!היי']), 1); break; } }
+      if (Math.random() < .25) for (const v of actV) { const sp = Math.hypot(v.vx, v.vy); if (sp < 90 || Math.abs(v.x - p.x) > 90 || Math.abs(v.y - p.y) > 90) continue; const rx = p.x - v.x, ry = p.y - v.y, ahead = (rx * v.vx + ry * v.vy) / sp; if (ahead > 0 && ahead < 70 && Math.abs((rx * v.vy - ry * v.vx) / sp) < 16) { const s = (rx * v.vy - ry * v.vx) > 0 ? 1 : -1; p.vx += v.vy / sp * s * 220; p.vy += -v.vx / sp * s * 220; if (Math.random() < .5) say(p, pick(['אוי!', 'היי!']), 1); break; } }
     }
   }
   if (p.punch > 0) p.punch -= dt;
@@ -417,7 +417,7 @@ function entitiesTick(dt) {
         break; }
     }
     if (v !== Player.veh && !Player.veh && Player.out <= 0) for (const c of cs) { const dx = Player.x - c.x, dy = Player.y - c.y, d = Math.hypot(dx, dy), rr = c.r + 6.5; if (d >= rr) continue;
-      if (sp > 50) { Player.hurt(Math.min(28, sp * .12), v.x, v.y); Player.vx += v.vx * .6; Player.vy += v.vy * .6; if (v.driver && v.driver !== 'player') say(v.driver, v.ai === 'chase' ? '!תפסתי אותך' : '!סליחה', 1.2); }
+      if (sp > 50) { Player.hurt(Math.min(28, sp * .12), v.x, v.y); Player.vx += v.vx * .6; Player.vy += v.vy * .6; if (v.driver && v.driver !== 'player') say(v.driver, v.ai === 'chase' ? 'תפסתי אותך!' : 'סליחה!', 1.2); }
       else if (d > 0) { Player.x += dx / d * (rr - d); Player.y += dy / d * (rr - d); } break; }
   }
   for (const p of peds) { if (p.veh || p.state === 'fly' || p.mission || dist(p.x, p.y, P0.x, P0.y) < 1200) updatePed(p, dt); }
