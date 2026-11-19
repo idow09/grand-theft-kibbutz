@@ -96,6 +96,9 @@ const Audio2 = (() => {
       case 'static': noise(t, .35, { ft: 'bandpass', f: 3000, q: .5, vol: .15 }); break;
       case 'thunder': noise(t, 2.8, { f: 260, fEnd: 60, vol: .7, a: .05, rate: .5 }); noise(t, .4, { f: 900, vol: .3 }); break;
       case 'click': tone(1500, t, .03, { type: 'square', vol: .05 }); break;
+      case 'clop': noise(t, .045, o({ ft: 'bandpass', f: 1300, q: 6, vol: .22 * v })); noise(t + .09, .04, o({ ft: 'bandpass', f: 1050, q: 6, vol: .16 * v })); break;
+      case 'neigh': tone(620, t, .55, o({ type: 'sawtooth', slide: 900, lp: 2200, vol: .09 * v, a: .03 })); tone(880, t + .1, .5, o({ type: 'sawtooth', slide: 420, lp: 2000, vol: .07 * v })); for (let i = 0; i < 6; i++) tone(700 - i * 40, t + .55 + i * .06, .06, o({ type: 'sawtooth', lp: 1800, vol: .05 * v })); break;
+      case 'harvest': noise(t, .25, o({ ft: 'bandpass', f: 500, q: 1.5, vol: .3 * v })); tone(95, t, .2, o({ type: 'square', lp: 500, vol: .08 * v })); break;
       case 'buy': tone(1046, t, .06, { vol: .07 }); tone(1568, t + .06, .1, { vol: .07 }); break;
     }
   }
@@ -111,7 +114,8 @@ const Audio2 = (() => {
       engine = { o1, o2, f, g, lfo, lg };
     }
     const e = engine, t = now();
-    const P = { none: [0, 0, 0, 0], electric: [220, 900, .025, 0], moped: [70, 260, .05, 12], car: [45, 160, .05, 0], diesel: [28, 70, .08, 7], truck: [32, 90, .08, 5] }[kind] || [0, 0, 0, 0];
+    const P = { none: [0, 0, 0, 0], electric: [220, 900, .025, 0], moped: [70, 260, .05, 12], car: [45, 160, .05, 0], diesel: [28, 70, .08, 7], truck: [32, 90, .08, 5], plane: [55, 150, .085, 26] }[kind] || [0, 0, 0, 0];
+    speed01 = Math.min(1.3, speed01);
     const f0 = P[0] + (P[1] - P[0]) * speed01;
     e.o1.frequency.setTargetAtTime(Math.max(20, f0), t, .08); e.o2.frequency.setTargetAtTime(Math.max(20, f0 * .5), t, .08);
     e.f.frequency.setTargetAtTime(kind === 'electric' ? 2500 : 300 + speed01 * 900, t, .1);
@@ -230,7 +234,7 @@ const Audio2 = (() => {
       bass: (s, ch, t, d, R, S) => { if (s % 4 !== 0) INST.rollBass(deg(S, R - 12, ch), t, d, 1); },
       chords: (s, ch, t, d, R, S, bar) => { if (s % 2 === 0 && bar % 4 >= 2) INST.acid(deg(S, R + 12, ch + [0, 2, 4, 7, 4, 2, 0, 1][(s / 2) % 8]), t, d * 1.6, .9, (bar * 16 + s) / 12); },
       lead: 'acid' },
-    { id: 'talk', name: 'גלי הקיבוץ — חדשות ופרסומות', tag: 'מהמזכירות, באהבה', col: '#9fd8ff', bpm: 84, scale: 'major', root: 60, prog: [0, 3, 4, 0], density: .2, talk: true,
+    { id: 'talk', name: 'קול העלון', tag: 'חדשות ופרסומות מהמזכירות, באהבה', col: '#9fd8ff', bpm: 84, scale: 'major', root: 60, prog: [0, 3, 4, 0], density: .2, talk: true,
       drums: () => { }, bass: (s, ch, t, d, R, S) => { if (s === 0) INST.pad(deg(S, R - 12, ch), t, d * 16, .6); },
       chords: (s, ch, t, d, R, S) => { if (s === 0) [0, 2, 4].forEach(i => INST.pad(deg(S, R, ch + i), t, d * 16, .4)); }, lead: 'bells' },
   ];
@@ -247,6 +251,14 @@ const Audio2 = (() => {
     'הנוער מזמין את כולם למסיבה במקלט. ההורים פחות מוזמנים.',
     'חדשות הלול: שש תרנגולות נמלטו הבוקר. החשודות עדיין בחופש.',
     'ועד הקיבוץ מבקש להזכיר: ההגה של הקלנועית הוא לא צעצוע. גם לא הצופר.',
+    'האקונומית מבקשת: מי שנכנס אתמול דרך החלון, לפחות תסגור אחריך.',
+    'סידור העבודה למחר: גיוס אבוקדו. כולם. כן, גם אתה.',
+    'הקומונה: מכנסיים עם מספר כביסה 214 הגיעו לחדר הלא נכון. שוב.',
+    'ועדת תרבות: ערב שירה בציבור. נא להביא כיסא, פרודוקטים וסבלנות.',
+    'חדשות הרפת: הפרה שוש נבחרה לוועדת ביקורת.',
+    'ועדת קליטה מזכירה: מועמדים, אסור לכם לנסוע על הדשא. גם לחברים אסור, אבל להם לא אומרים.',
+    'מהמנחת: מטוס הריסוס יעבור מחר מעל השדות המזרחיים. מי שתולה כביסה, שיכניס.',
+    'מהאורווה: הסוס הלבן שוב ברח לדשא הגדול. הנויניק כבר יודע.',
   ];
 
   let station = 0, radioOn = true, nextStep = 0, step = 0, song = null, talkQueue = 0, subtitle = null, subT = 0;

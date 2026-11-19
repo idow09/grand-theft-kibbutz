@@ -183,9 +183,13 @@ class SpatialGrid {
 
 /* ---------------- input ---------------- */
 const keys = {}, pressed = {}; let mouseDown = false, mouseClicked = false;
+// macOS: a double tap on Control starts system dictation, and Cmd shortcuts close tabs,
+// so on a Mac the fire key is F/J only (Ctrl is never read)
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || '') || /Mac OS X/.test(navigator.userAgent || '');
 const GAME_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'Tab'];
 addEventListener('keydown', e => {
   if (GAME_KEYS.includes(e.code)) e.preventDefault();
+  if (e.metaKey || (IS_MAC && e.ctrlKey)) { e.preventDefault(); return; }
   if (!keys[e.code]) pressed[e.code] = true;
   keys[e.code] = true;
   if (window.Audio2) Audio2.init();

@@ -144,6 +144,46 @@ const SPR = (() => {
       rr(g, L / 2 - 10, -3.5, 4, 7, 2); g.fillStyle = shade(c, .25); g.fill();
       g.fillStyle = '#fffbe0'; circ(g, L / 2 - 4.5, 0, 1.3); g.fill(); g.fillStyle = '#c62f28'; g.fillRect(-L / 2 + 1.5, -1, 1.2, 2);
     },
+    plane(g, c, L, W) { // Ag crop duster, top view, nose at +x
+      const dk = shade(c, -.35);
+      // main wing with spray boom along its trailing edge
+      rr(g, -2, -W / 2, 16, W, 4); g.fillStyle = bodyGrad(g, c, 16); g.fill(); outline(g);
+      g.fillStyle = 'rgba(0,0,0,.12)'; g.fillRect(-2, -W / 2 + 2, 3, W - 4);
+      g.strokeStyle = '#6a6f74'; g.lineWidth = 1.1; g.beginPath(); g.moveTo(-3.5, -W / 2 + 4); g.lineTo(-3.5, W / 2 - 4); g.stroke();
+      g.fillStyle = '#3a3f44'; for (let y = -W / 2 + 6; y < W / 2 - 4; y += 6) g.fillRect(-5, y, 2, 1.4);
+      for (const sy of [-1, 1]) { g.fillStyle = sy < 0 ? '#e33' : '#2a2'; g.fillRect(6, sy * (W / 2 - 1.5) - 1, 3, 2); }
+      // tailplane
+      rr(g, -L / 2, -15, 9, 30, 3); g.fillStyle = bodyGrad(g, c, 9); g.fill(); outline(g);
+      // fuselage
+      rr(g, -L / 2 + 2, -5.5, L - 7, 11, 5); g.fillStyle = bodyGrad(g, c, 11); g.fill(); outline(g);
+      g.fillStyle = dk; g.fillRect(-L / 2 + 2, -.8, 9, 1.6); // fin seen from above
+      // hopper hatch + cockpit
+      rr(g, 13, -4, 6, 8, 1.5); g.fillStyle = shade(c, -.15); g.fill(); outline(g, .35);
+      rr(g, 1, -4, 10, 8, 3); g.fillStyle = glassGrad(g, 1, 11); g.fill(); outline(g, .4);
+      // engine cowling
+      rr(g, L / 2 - 9, -5, 8, 10, 3); g.fillStyle = '#3d4247'; g.fill(); outline(g);
+      g.fillStyle = '#9aa1a6'; for (let y = -3.5; y < 4; y += 2.3) g.fillRect(L / 2 - 8, y, 6, .8);
+      g.fillStyle = dk; g.font = 'bold 5px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.direction = 'ltr';
+      g.save(); g.translate(6, -W / 2 + 13); g.rotate(Math.PI / 2); g.fillText('4X-GTK', 0, 0); g.restore();
+    },
+    trailer(g, c, L, W) { // two-axle farm wagon, drawbar at +x
+      g.strokeStyle = '#2a2a2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(L / 2 - 8, -6); g.lineTo(L / 2 + 6, 0); g.lineTo(L / 2 - 8, 6); g.stroke();
+      circ(g, L / 2 + 6, 0, 2); g.fillStyle = '#555'; g.fill();
+      for (const x of [-L / 2 + 12, L / 2 - 16]) for (const sy of [-1, 1]) wheel(g, x, sy * (W / 2 - 1), 12, 6, 1);
+      rr(g, -L / 2, -W / 2 + 3, L - 6, W - 6, 2); g.fillStyle = shade(c, -.3); g.fill(); outline(g);
+      rr(g, -L / 2 + 2, -W / 2 + 5, L - 10, W - 10, 1); g.fillStyle = '#a07a4a'; g.fill();
+      g.strokeStyle = 'rgba(60,40,20,.45)'; g.lineWidth = .7; for (let x = -L / 2 + 6; x < L / 2 - 8; x += 4.2) { g.beginPath(); g.moveTo(x, -W / 2 + 5); g.lineTo(x, W / 2 - 5); g.stroke(); }
+      g.fillStyle = c; g.fillRect(-L / 2, -W / 2 + 3, L - 6, 2.2); g.fillRect(-L / 2, W / 2 - 5.2, L - 6, 2.2);
+      g.fillStyle = '#ff8a1a'; g.fillRect(-L / 2 - .5, -W / 2 + 4, 1.5, 3); g.fillRect(-L / 2 - .5, W / 2 - 7, 1.5, 3);
+    },
+    plow(g, c, L, W) { // disc plough: cross beam with angled discs, drawbar at +x
+      g.strokeStyle = '#2a2a2a'; g.lineWidth = 2; g.beginPath(); g.moveTo(-2, -8); g.lineTo(L / 2 + 6, 0); g.lineTo(-2, 8); g.stroke();
+      circ(g, L / 2 + 6, 0, 2); g.fillStyle = '#555'; g.fill();
+      rr(g, -5, -W / 2 + 2, 7, W - 4, 2); g.fillStyle = bodyGrad(g, c, 7); g.fill(); outline(g);
+      for (let i = 0; i < 5; i++) { const y = -W / 2 + 6 + i * (W - 12) / 4; g.save(); g.translate(-7, y); g.rotate(.45); ell(g, 0, 0, 5.5, 2.4); const gr = g.createLinearGradient(-5, 0, 5, 0); gr.addColorStop(0, '#5a5f63'); gr.addColorStop(.5, '#d7dde2'); gr.addColorStop(1, '#6a6f73'); g.fillStyle = gr; g.fill(); outline(g, .5); g.restore(); }
+      wheel(g, 4, -W / 2 + 2, 9, 4.5, 1);
+    },
+    horse(g, c, L, W) { drawHorse(g, c, 0, true); },
     bike(g, c, L, W) {
       g.fillStyle = '#191919'; rr(g, L / 2 - 10, -1, 10, 2, 1); g.fill(); rr(g, -L / 2, -1, 10, 2, 1); g.fill();
       g.strokeStyle = c; g.lineWidth = 1.8; g.beginPath(); g.moveTo(-L / 2 + 5, 0); g.lineTo(L / 2 - 6, 0); g.stroke();
@@ -152,8 +192,25 @@ const SPR = (() => {
       g.fillStyle = '#999'; g.fillRect(-L / 2 + 2, -1.8, 6, 3.6);
     },
   };
-  const VSIZE = { bike: [26, 9], scooter: [30, 11], kalnoit: [34, 20], atv: [34, 22], cart: [42, 24], car: [52, 26], van: [60, 28], pickup: [60, 28], milktruck: [92, 32], forklift: [36, 22], tractor: [62, 36], combine: [110, 70] };
-  const VKIND = { car: 'car', van: 'van', pickup: 'pickup', milktruck: 'milktruck', forklift: 'forklift', tractor: 'tractor', combine: 'combine', kalnoit: 'kalnoit', atv: 'atv', cart: 'cart', scooter: 'scooter', bike: 'bike' };
+  const VSIZE = { bike: [26, 9], scooter: [30, 11], kalnoit: [34, 20], atv: [34, 22], cart: [42, 24], car: [52, 26], van: [60, 28], pickup: [60, 28], milktruck: [92, 32], forklift: [36, 22], tractor: [62, 36], combine: [110, 70], horse: [40, 14], plane: [56, 80], trailer: [56, 30], plow: [24, 46] };
+  const VKIND = { car: 'car', van: 'van', pickup: 'pickup', milktruck: 'milktruck', forklift: 'forklift', tractor: 'tractor', combine: 'combine', kalnoit: 'kalnoit', atv: 'atv', cart: 'cart', scooter: 'scooter', bike: 'bike', horse: 'horse', plane: 'plane', trailer: 'trailer', plow: 'plow' };
+  /* horse, top view, nose at +x; ph = gait phase (legs swing out past the body) */
+  function drawHorse(g, c, ph, saddle) {
+    const st = Math.sin(ph), ct = Math.cos(ph), dk = shade(c, -.38), leg = shade(c, -.5);
+    g.fillStyle = leg;
+    for (const [x, y, s] of [[9, -4.2, st], [9, 4.2, -st], [-9, -4.2, ct], [-9, 4.2, -ct]]) { ell(g, x + s * 4.5, y * 1.12, 2.4, 1.6); g.fill(); g.fillStyle = '#222'; ell(g, x + s * 4.5 + 1.6, y * 1.12, .9, 1.3); g.fill(); g.fillStyle = leg; }
+    g.strokeStyle = dk; g.lineWidth = 2.6; g.beginPath(); g.moveTo(-13, 0); g.quadraticCurveTo(-18, st * 2.5, -21, st * 3.5); g.stroke(); // tail
+    ell(g, 0, 0, 14, 6.2); const gr = g.createLinearGradient(0, -6, 0, 6); gr.addColorStop(0, shade(c, -.2)); gr.addColorStop(.35, shade(c, .18)); gr.addColorStop(1, shade(c, -.32)); g.fillStyle = gr; g.fill(); outline(g, .45);
+    g.beginPath(); g.moveTo(10, -3.4); g.quadraticCurveTo(17, -2.6, 19, -1.6); g.lineTo(19, 1.6); g.quadraticCurveTo(17, 2.6, 10, 3.4); g.closePath(); g.fillStyle = shade(c, .05); g.fill(); outline(g, .35); // neck
+    ell(g, 21.5, 0, 4.6, 2.6); g.fillStyle = c; g.fill(); outline(g, .4); ell(g, 25, 0, 1.6, 2); g.fillStyle = dk; g.fill(); // head + muzzle
+    g.fillStyle = dk; g.beginPath(); g.moveTo(18.5, -2.2); g.lineTo(17.6, -4); g.lineTo(19.8, -2.4); g.moveTo(18.5, 2.2); g.lineTo(17.6, 4); g.lineTo(19.8, 2.4); g.fill(); // ears
+    g.strokeStyle = dk; g.lineWidth = 1.8; g.beginPath(); g.moveTo(5, 0); g.quadraticCurveTo(12, -.6, 18, -.3); g.stroke(); // mane
+    if (saddle) { rr(g, -6, -5.6, 10, 11.2, 3); g.fillStyle = '#5a3418'; g.fill(); outline(g, .4); rr(g, -4.5, -3.8, 7, 7.6, 2); g.fillStyle = '#7a4a24'; g.fill(); g.fillStyle = '#c9a050'; g.fillRect(-1.5, -6.6, 1.6, 1.2); g.fillRect(-1.5, 5.4, 1.6, 1.2); }
+  }
+  const HFRAMES = 8;
+  function horse(col, frame) {
+    return memo('h' + col + frame, () => C(54, 26, g => drawHorse(g, col, frame / HFRAMES * TAU, true)));
+  }
   function vehicle(type, col, wrecked) {
     return memo('v' + type + col + (wrecked ? 'x' : ''), () => {
       const [L, W] = VSIZE[type];
@@ -440,8 +497,15 @@ const SPR = (() => {
     if (k === 'house') { flat('#cfcac0', true); solarHeater(g, r.range(-W2 + 10, W2 - 10), 2, 0); if (r() < .6) acUnit(g, -W2 + 7, -H2 + 6); return; }
     switch (k) {
       case 'dining': flat('#d9d3c4', true); g.fillStyle = 'rgba(150,200,230,.75)'; for (let x = -W2 + 20; x < W2 - 15; x += 30) for (const y of [-H2 * .45, H2 * .2]) { rr(g, x, y, 18, 10, 2); g.fill(); g.strokeStyle = '#999'; g.stroke(); } for (let i = 0; i < 4; i++) acUnit(g, -W2 + 12 + i * 10, H2 - 8); TXT(g, b.label, 16, '#7a3b2e', H2 * .62); break;
-      case 'office': case 'club': case 'hall': case 'laundry': case 'school': case 'shop': case 'kiosk': case 'shop2':
-        flat({ office: '#b8c4cc', club: '#d9c9a8', hall: '#c9b8a0', laundry: '#c9d6dc', school: '#e2cfa0', shop: '#d9b38a', kiosk: '#e9d9b8', shop2: '#f0f0f0' }[k], true);
+      case 'stable': { const c = '#8a4a2e'; g.fillStyle = shade(c, .12); g.fillRect(-W2, -H2, W2 * 2, H2); g.fillStyle = shade(c, -.14); g.fillRect(-W2, 0, W2 * 2, H2);
+        g.strokeStyle = 'rgba(0,0,0,.22)'; g.lineWidth = .8; for (let x = -W2; x < W2; x += 4) { g.beginPath(); g.moveTo(x, -H2); g.lineTo(x, H2); g.stroke(); }
+        g.fillStyle = '#5a2e1a'; g.fillRect(-W2, -1.2, W2 * 2, 2.4); for (let x = -W2 + 14; x < W2 - 8; x += 22) { rr(g, x, -H2 + 3, 8, 6, 1); g.fillStyle = 'rgba(200,230,240,.55)'; g.fill(); g.fillStyle = '#5a2e1a'; }
+        g.strokeStyle = 'rgba(30,10,0,.5)'; g.strokeRect(-W2, -H2, W2 * 2, H2 * 2); if (b.label) TXT(g, b.label, 12, '#f3e2c0', H2 * .55); break; }
+      case 'hangar': { const gr = g.createLinearGradient(0, -H2, 0, H2); gr.addColorStop(0, '#7f878d'); gr.addColorStop(.45, '#d3d8dc'); gr.addColorStop(1, '#6f777c'); g.fillStyle = gr; g.fillRect(-W2, -H2, W2 * 2, H2 * 2);
+        g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = .8; for (let x = -W2; x < W2; x += 6) { g.beginPath(); g.moveTo(x, -H2); g.lineTo(x, H2); g.stroke(); }
+        g.strokeStyle = 'rgba(0,0,0,.35)'; g.strokeRect(-W2, -H2, W2 * 2, H2 * 2); if (b.label) TXT(g, b.label, 12, '#2a2a2a', 0); break; }
+      case 'office': case 'club': case 'hall': case 'laundry': case 'school': case 'shop': case 'kiosk': case 'shop2': case 'ekonomia': case 'kidshouse':
+        flat({ office: '#b8c4cc', club: '#d9c9a8', hall: '#c9b8a0', laundry: '#c9d6dc', school: '#e2cfa0', shop: '#d9b38a', kiosk: '#e9d9b8', shop2: '#f0f0f0', ekonomia: '#c7cbb4', kidshouse: '#f0d9a8' }[k], true);
         if (k === 'shop2') { g.fillStyle = '#d33'; g.fillRect(-W2, -H2, W2 * 2, 4); }
         for (let i = 0; i < Math.floor(W2 / 18); i++) acUnit(g, -W2 + 10 + i * 14, -H2 + 7);
         if (W2 > 30) solarHeater(g, W2 - 14, H2 - 10, 0);
@@ -474,12 +538,16 @@ const SPR = (() => {
         case 'ext': case 'extinguisher': rr(g, -4, -8, 8, 17, 3); g.fillStyle = '#d32f2f'; g.fill(); outline(g); g.fillStyle = '#222'; g.fillRect(-2, -10, 4, 3); g.strokeStyle = '#222'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(2, -9); g.quadraticCurveTo(8, -9, 7, -2); g.stroke(); g.fillStyle = '#fff'; g.fillRect(-3, -2, 6, 4); break;
         case 'health': rr(g, -9, -6, 18, 12, 6); g.fillStyle = '#e9c88a'; g.fill(); outline(g); g.fillStyle = '#c99a4a'; rr(g, -7, -4, 14, 8, 4); g.fill(); g.fillStyle = '#6aa84f'; for (let i = -5; i < 6; i += 3) { circ(g, i, -1, 1.6); g.fill(); } g.fillStyle = '#b5371f'; for (let i = -4; i < 6; i += 4) { circ(g, i, 2, 1.4); g.fill(); } break;
         case 'armor': circ(g, 0, 0, 9); g.fillStyle = '#e6dcb4'; g.fill(); outline(g); circ(g, 0, 0, 5.5); g.fillStyle = '#d4c896'; g.fill(); outline(g, .3); break;
-        case 'egg': ell(g, 0, 0, 6, 8); const g2 = g.createRadialGradient(-2, -3, 1, 0, 0, 9); g2.addColorStop(0, '#fff6b0'); g2.addColorStop(.5, '#ffd23f'); g2.addColorStop(1, '#c48a10'); g.fillStyle = g2; g.fill(); outline(g); break;
+        case 'egg': { // a folded shirt with its sewn-in laundry number tag
+          g.fillStyle = '#4a7fc4'; g.beginPath(); g.moveTo(-9, -6); g.lineTo(-4, -9); g.lineTo(4, -9); g.lineTo(9, -6); g.lineTo(7, -2); g.lineTo(5, -3); g.lineTo(5, 8); g.lineTo(-5, 8); g.lineTo(-5, -3); g.lineTo(-7, -2); g.closePath(); g.fill(); outline(g);
+          g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = .8; g.beginPath(); g.moveTo(-5, 2); g.lineTo(5, 2); g.stroke();
+          rr(g, -4.5, -1, 9, 5.5, 1); g.fillStyle = '#fffdf2'; g.fill(); g.strokeStyle = '#c33'; g.lineWidth = .6; g.stroke();
+          g.fillStyle = '#c33'; g.font = 'bold 4.6px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('214', 0, 1.9); break; }
         case 'rampage': circ(g, 0, 0, 10); g.fillStyle = '#7a1fa2'; g.fill(); outline(g); g.fillStyle = '#ffd23f'; g.beginPath(); g.moveTo(-6, -3); g.lineTo(2, -6); g.lineTo(2, 6); g.lineTo(-6, 3); g.closePath(); g.fill(); g.fillRect(2, -3, 4, 6); g.strokeStyle = '#ffd23f'; g.lineWidth = 1.2; g.beginPath(); g.arc(4, 0, 6, -.7, .7); g.stroke(); break;
         case 'phone': rr(g, -8, -8, 16, 16, 3); g.fillStyle = '#ffd23f'; g.fill(); outline(g); g.fillStyle = '#222'; g.font = 'bold 13px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('☎', 0, 1); break;
         case 'coin': circ(g, 0, 0, 7); g.fillStyle = '#d9a400'; g.fill(); circ(g, 0, 0, 5.4); g.fillStyle = '#ffd23f'; g.fill(); g.fillStyle = '#b8860b'; g.font = 'bold 8px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('₪', 0, .5); break;
       }
     }));
   }
-  return { vehicle, personSheet, animalSheet, tree, TREE, prop, roof, icon, VSIZE, PFRAMES };
+  return { vehicle, personSheet, animalSheet, tree, TREE, prop, roof, icon, VSIZE, PFRAMES, horse, HFRAMES };
 })();

@@ -17,6 +17,7 @@ function drawHUD(dt) {
   const pad = 16, small = VW < 700, tch = TOUCH.on; TOUCH.phoneBox = null;
   // ---- money / health / wanted (top-right) ----
   T(`${G.money.toLocaleString('en-US')} ₪`, VW - pad, 30, small ? 26 : 34, '#ffd84a', 'right');
+  { const mw = ctx.measureText(`${G.money.toLocaleString('en-US')} ₪`).width; T('תקציב', VW - pad - mw - 8, 33, 12, '#d8c890', 'right', { w: 600 }); }
   if (G.comboT > 0 && G.mult > 1) T(`x${G.mult} קומבו`, VW - pad, 60, 16, '#ff9b4a', 'right');
   const bw = 180, bx = VW - pad - bw; let by = 74;
   panel(bx - 4, by - 4, bw + 8, Player.armor > 0 ? 30 : 20, .55, 6);
@@ -34,7 +35,7 @@ function drawHUD(dt) {
   // respect bars
   let ry = tch ? TOUCH_RADAR.y + TOUCH_RADAR.r + 18 : 70;
   for (const k in FACT) { const r = G.respect[k]; T(FACT[k].n, pad + 140, ry, 11, FACT[k].c, 'right', { w: 600 }); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(pad, ry - 3, 60, 6); ctx.fillStyle = r >= 0 ? FACT[k].c : '#ff4a4a'; ctx.fillRect(pad + 30, ry - 3, 30 * r / 100, 6); ry += 16; }
-  T(`ביצי זהב ${Object.keys(G.eggs).length}/12`, pad + 140, ry + 2, 11, '#ffd84a', 'right', { w: 600 });
+  T(`מספרי כביסה ${Object.keys(G.eggs).length}/12`, pad + 140, ry + 2, 11, '#ffd84a', 'right', { w: 600 });
   // ---- weapon / vehicle (bottom-right) ----
   const wy = VH - pad - 30;
   if (!tch) panel(VW - pad - 190, wy - 26, 190, 52, .55, 10);
@@ -107,7 +108,7 @@ function drawRadar(cx, cy, R) {
   if (ENV.night > .3) { ctx.fillStyle = `rgba(0,10,40,${ENV.night * .35})`; ctx.fillRect(cx - R, cy - R, R * 2, R * 2); }
   const dot = (x, y, c, s, edge) => { let X = (x - P0.x) * sc, Y = (y - P0.y) * sc; const d = Math.hypot(X, Y); if (d > R - 6) { if (!edge) return; X *= (R - 6) / d; Y *= (R - 6) / d; } ctx.fillStyle = c; ctx.beginPath(); ctx.arc(cx + X, cy + Y, s, 0, TAU); ctx.fill(); ctx.strokeStyle = 'rgba(0,0,0,.6)'; ctx.lineWidth = 1; ctx.stroke(); };
   for (const s of MAP.sprays) dot(s.x, s.y, '#ffd23f', 3.5);
-  if (!G.mission) for (const ph of MAP.phones) dot(ph.x, ph.y, FACT[ph.f].c, 4.5, true);
+  if (!G.mission) for (const ph of MAP.phones) dot(ph.x, ph.y, phoneFact(ph.f).c, 4.5, true);
   for (const it of Pickups.items) if (it.alive && it.t === 'rampage') dot(it.x, it.y, '#c98bff', 3.5);
   for (const p of peds) if (p.state === 'chase') dot(p.x, p.y, '#ff3b3b', 2.5);
   for (const v of vehicles) if (v.ai === 'chase') dot(v.x, v.y, Math.floor(G.time * 5) % 2 ? '#ff3b3b' : '#ffd23f', 3.5);
@@ -125,7 +126,7 @@ function drawBigMap() {
   const lbl = (n, x, y, size, c) => { const [X, Y] = at(x, y); T(n, X, Y, size || 12, c || '#fff', 'center'); };
   lbl('הקיבוץ', MAP.KC[0], MAP.KC[1] - 200, 16); lbl('המשק', MAP.FC[0], MAP.FC[1]); lbl('אזור התעשייה', MAP.IC[0], MAP.IC[1]); lbl('ההרחבה', MAP.EC[0], MAP.EC[1] - 120); lbl('הוואדי', 900, 3420, 12, '#e9d7a8'); lbl('כביש 99', 5200, 4380, 12, '#ccc'); lbl('בריכות הדגים', 5800, 2300, 12, '#9cf'); lbl('המטעים', 1100, 700); lbl('שדות הצפון', 5000, 800);
   for (const s2 of MAP.sprays) { const [X, Y] = at(s2.x, s2.y); ctx.fillStyle = '#ffd23f'; ctx.fillRect(X - 4, Y - 4, 8, 8); }
-  for (const ph of MAP.phones) { const [X, Y] = at(ph.x, ph.y); ctx.fillStyle = FACT[ph.f].c; ctx.beginPath(); ctx.arc(X, Y, 6, 0, TAU); ctx.fill(); ctx.strokeStyle = '#000'; ctx.stroke(); }
+  for (const ph of MAP.phones) { const [X, Y] = at(ph.x, ph.y); ctx.fillStyle = phoneFact(ph.f).c; ctx.beginPath(); ctx.arc(X, Y, 6, 0, TAU); ctx.fill(); ctx.strokeStyle = '#000'; ctx.stroke(); }
   for (const sh of MAP.shops) { const [X, Y] = at(sh.x, sh.y); T('₪', X, Y, 11, '#9be26b', 'center'); }
   for (const it of Pickups.items) if (it.alive && it.t === 'rampage') { const [X, Y] = at(it.x, it.y); ctx.fillStyle = '#c98bff'; ctx.beginPath(); ctx.arc(X, Y, 4, 0, TAU); ctx.fill(); }
   if (G.mission) for (const m of G.mission.markers()) if (m) { const [X, Y] = at(m.x, m.y); ctx.strokeStyle = '#ffe14a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X, Y, 8 + Math.sin(G.time * 5) * 2, 0, TAU); ctx.stroke(); }
@@ -137,8 +138,8 @@ function drawBigMap() {
 /* ---------------- menus ---------------- */
 const MENU = { sel: 0, items: [], mode: 'title', anim: 0 };
 function menuItems() {
-  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], ['איך משחקים', 'controls']].filter(Boolean);
-  if (MENU.mode === 'pause') return [['חזרה למשחק', 'resume'], ['מפה', 'map'], [`מוזיקה: ${Math.round(Audio2.vol.music * 10)}`, 'music'], [`צלילים: ${Math.round(Audio2.vol.sfx * 10)}`, 'sfx'], ['איך משחקים', 'controls'], ['משחק חדש', 'new']];
+  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], ['איך משחקים', 'controls'], ['קרדיטים', 'credits']].filter(Boolean);
+  if (MENU.mode === 'pause') return [['חזרה למשחק', 'resume'], ['מפה', 'map'], [`מוזיקה: ${Math.round(Audio2.vol.music * 10)}`, 'music'], [`צלילים: ${Math.round(Audio2.vol.sfx * 10)}`, 'sfx'], ['איך משחקים', 'controls'], ['קרדיטים', 'credits'], ['משחק חדש', 'new']];
   return [['חזרה', 'back']];
 }
 function menuInput() {
@@ -149,7 +150,7 @@ function menuInput() {
   const it = items[MENU.sel];
   if ((P('ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD')) && (it[1] === 'music' || it[1] === 'sfx')) { const d = P('ArrowRight', 'KeyD') ? -.1 : .1; Audio2.vol[it[1]] = clamp(Math.round((Audio2.vol[it[1]] + d) * 10) / 10, 0, 1); Audio2.applyVol(); Audio2.sfx('click'); }
   if (P('Enter', 'Space') || (mouseClicked && MENU.hover !== undefined)) { if (mouseClicked && MENU.hover !== undefined) MENU.sel = MENU.hover; return menuItems()[MENU.sel][1]; }
-  if (P('Escape') && MENU.mode !== 'title') return MENU.mode === 'controls' ? 'back' : 'resume';
+  if (P('Escape') && MENU.mode !== 'title') return MENU.mode === 'controls' || MENU.mode === 'credits' ? 'back' : 'resume';
   return null;
 }
 function drawMenu() {
@@ -169,22 +170,38 @@ function drawMenu() {
     if (title) T('"הדשא של השכן ירוק יותר. עד שעוברים עליו עם טרקטור"', VW / 2, VH * .2 + 136 * tz, 15, '#d8ecff', 'center', { w: 400, stroke: false });
   }
   if (MENU.mode === 'controls') { drawControls(); }
-  const items = menuItems(), y0 = MENU.mode === 'controls' ? VH - 70 : VH * .52;
+  if (MENU.mode === 'credits') { drawCredits(); }
+  const items = menuItems(), y0 = MENU.mode === 'controls' || MENU.mode === 'credits' ? VH - 70 : VH * (VH < 560 ? .45 : .52);
+  const step = Math.max(30, Math.min(46, (VH - 30 - y0) / Math.max(1, items.length - 1 || 1)));
   MENU.hover = undefined;
   items.forEach(([n], i) => {
-    const y = y0 + i * 46, sel = i === MENU.sel, w = 280;
-    if (mouseScreen && Math.abs(mouseScreen.x - VW / 2) < w / 2 && Math.abs(mouseScreen.y - y) < 20) { MENU.hover = i; if (MENU.sel !== i) { MENU.sel = i; } }
+    const y = y0 + i * step, sel = i === MENU.sel, w = 280;
+    if (mouseScreen && Math.abs(mouseScreen.x - VW / 2) < w / 2 && Math.abs(mouseScreen.y - y) < step / 2) { MENU.hover = i; if (MENU.sel !== i) { MENU.sel = i; } }
     if (sel) { panel(VW / 2 - w / 2, y - 20, w, 40, .6, 20); ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.roundRect(VW / 2 + w / 2 - 8, y - 12, 4, 24, 2); ctx.fill(); }
     T(n, VW / 2, y, sel ? 24 : 20, sel ? '#ffd84a' : '#ddd', 'center');
   });
   if (title) T(TOUCH.on ? 'v2 · נגיעה לבחירה' : 'v2 · חיצים + Enter · או עכבר', VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
 }
+function drawCredits() {
+  const w = Math.min(600, VW - 32), x = VW / 2 - w / 2, short = VH < 560, y = short ? 10 : VH * .1;
+  const bio = 'קיבוצניק (כמעט) מלידה, אבל עד היום מרגיש סוג ב׳, כי ההורים היו תושבים, אז שילמתי על שירותים וכלליות בחדר האוכל. היום חבר קיבוץ גאה ואבא לשלוש קיבוצניקיות קטנות שנולדו פה, בקיבוץ סעד.';
+  const lines = wrap(bio, w - 56, short ? 14 : 16), lh = short ? 19 : 23;
+  const h = (short ? 150 : 210) + lines.length * lh;
+  panel(x, y, w, h, .86, 16);
+  T('קרדיטים', VW / 2, y + (short ? 24 : 34), short ? 20 : 26, '#ffd84a', 'center');
+  T('GRAND THEFT KIBBUTZ', VW / 2, y + (short ? 50 : 70), short ? 15 : 18, '#9be26b', 'center', { dir: 'ltr', w: 800 });
+  let yy = y + (short ? 80 : 112);
+  T('רעיון, הפקה ובדיקות שטח: עדו וייס', VW / 2, yy, short ? 16 : 19, '#fff', 'center'); yy += short ? 24 : 32;
+  for (const l of lines) { T(l, VW / 2, yy, short ? 14 : 16, '#d8e2ea', 'center', { w: 500, stroke: false }); yy += lh; }
+  yy += short ? 6 : 12; T('idow09@gmail.com', VW / 2, yy, short ? 14 : 16, '#9fd8ff', 'center', { dir: 'ltr', w: 600, stroke: false });
+  yy += short ? 22 : 30; T('קוד, גרפיקה וסאונד: Claude (Anthropic). הכל נוצר בקוד, בלי קבצים חיצוניים', VW / 2, yy, short ? 11 : 13, '#8a96a0', 'center', { w: 500, stroke: false });
+}
 function drawControls() {
   const L = TOUCH.on ? [
     ['תנועה / נהיגה', 'ג׳ויסטיק משמאל'], ['ריצה', 'ג׳ויסטיק עד הסוף'], ['כניסה / יציאה / טלפון', 'כפתור ירוק'], ['תקיפה / ירי', 'כפתור אדום'], ['החלפת נשק', '⇄'],
-    ['בלם יד / צופר', 'בלם / 📯'], ['תחנת רדיו', '📻'], ['קנייה בחנות', 'נגיעה בפריט'], ['מפה', 'נגיעה במכ״ם'], ['השהיה', '❚❚'],
+    ['בלם יד / צופר', 'בלם / 📯'], ['וו גרירה / פרטיקוף', 'וו / PTO'], ['תחנת רדיו', '📻'], ['קנייה בחנות', 'נגיעה בפריט'], ['מפה', 'נגיעה במכ״ם'], ['השהיה', '❚❚'],
   ] : [
-    ['תנועה / נהיגה', 'WASD או חיצים'], ['ריצה', 'Shift'], ['כניסה / יציאה מרכב, טלפון', 'E'], ['תקיפה / ירי', 'J · Ctrl · עכבר'], ['החלפת נשק', 'Q / Tab'],
+    ['תנועה / נהיגה', 'WASD או חיצים'], ['ריצה', 'Shift'], ['כניסה / יציאה מרכב, טלפון', 'E'], ['תקיפה / ירי / ריסוס', IS_MAC ? 'F · J · עכבר' : 'F · J · Ctrl · עכבר'], ['וו גרירה (עגלה / מחרשה)', 'G'], ['פרטיקוף (קומביין / מחרשה)', 'T'], ['החלפת נשק', 'Q / Tab'],
     ['בלם יד', 'Space'], ['צופר', 'H'], ['תחנת רדיו', 'R'], ['קנייה בחנות', '1 / 2 / 3'], ['מפה', 'M'], ['השהיה', 'Esc / P'],
   ];
   const short = VH < 520, rh = short ? 21 : 26, top = short ? 50 : 70;

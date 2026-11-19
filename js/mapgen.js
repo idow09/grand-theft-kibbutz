@@ -50,8 +50,9 @@ function genMap(seed) {
   MAP.access = addRoad(accPl, 'asphalt', 30, { name: 'כביש הגישה' });
   // gate: guard booth + raised barrier + kibbutz sign
   { const i = nearestIdx(accPl, Sg[0], Sg[1] + 90), p = accPl[i], a = plTan(accPl, i), n = [-Math.sin(a), Math.cos(a)];
-    addBuilding({ x: p[0] + n[0] * 34, y: p[1] + n[1] * 34, hw: 12, hh: 10, ang: a, h: 26, kind: 'booth', label: 'ש.ג' });
-    addProp('barrier', p[0] + n[0] * 30 + Math.cos(a) * 30, p[1] + n[1] * 30 + Math.sin(a) * 30, { ang: a, hw: 22 });
+    addBuilding({ x: p[0] + n[0] * 34, y: p[1] + n[1] * 34, hw: 12, hh: 10, ang: a, h: 26, kind: 'booth', label: 'השער הצהוב' });
+    // the yellow gate itself: two swing leaves across the road (opens by day, shuts at night or when the kab"t is after you)
+    MAP.gate = addProp('ygate', p[0], p[1], { ang: a + Math.PI / 2, hw: 19, open: true, solid: false, openK: 1 });
     poi('השער', p[0], p[1]);
     // car park outside the gate
     const c = [p[0] - n[0] * 150 + Math.cos(a) * 60, p[1] - n[1] * 150 + Math.sin(a) * 60];
@@ -100,8 +101,8 @@ function genMap(seed) {
   { const p = fw(-70, 205); MAP.phones.push({ x: p[0], y: p[1], f: 'cow' }); }
   // cow pen
   { const pc = fw(-300, 130); const pen = rectPoly(pc[0], pc[1], 175, 62, fa); addArea(pen, M.MUD, 15);
-    for (let x = -165; x <= 165; x += 36) { for (const y of [-62, 62]) { if (y < 0 && Math.abs(x) < 40) continue; const q = fw(-300 + x, 130 + y); addProp('fence', q[0], q[1], { ang: fa }); } }
-    for (let y = -44; y <= 44; y += 36) for (const x of [-175, 175]) { const q = fw(-300 + x, 130 + y); addProp('fence', q[0], q[1], { ang: fa + Math.PI / 2 }); }
+    for (let x = -165; x <= 165; x += 36) { for (const y of [-62, 62]) { if (y < 0 && Math.abs(x) < 40) continue; const q = fw(-300 + x, 130 + y); addProp('fence', q[0], q[1], { ang: fa, pen: 1 }); } }
+    for (let y = -44; y <= 44; y += 36) for (const x of [-175, 175]) { const q = fw(-300 + x, 130 + y); addProp('fence', q[0], q[1], { ang: fa + Math.PI / 2, pen: 1 }); }
     for (let i = 0; i < 9; i++) { const q = fw(-300 + R.range(-150, 150), 130 + R.range(-40, 40)); S.animals.push({ type: 'cow', x: q[0], y: q[1], pen: pen }); }
     for (let i = 0; i < 3; i++) { const q = fw(-380 + i * 90, 85); addProp('trough', q[0], q[1], { ang: fa }); }
     MAP.pen = { poly: pen, x: pc[0], y: pc[1] }; poi('הרפת', fw(-300, 60)[0], fw(-300, 60)[1]); }
@@ -113,8 +114,43 @@ function genMap(seed) {
   for (let i = 0; i < 8; i++) { const p = fw(R.range(-500, 520), R.range(-280, 280)); if (!solidAt(p[0], p[1], 14)) addProp(pick(['hay', 'tires', 'barrel', 'barrel', 'pallet']), p[0], p[1], { ang: R() * 3 }); }
   for (let i = 0; i < 5; i++) { const p = fw(-480 + i * 20, -230); addProp('beehive', p[0], p[1]); }
   poi('הלול', fw(390, -30)[0], fw(390, -30)[1]); poi('הסילו', fw(120, -170)[0], fw(120, -170)[1]);
+  // farm wagons and a plough to hook up; the hay-shed bay for the reversing test
+  { const t = fw(240, 60); park('trailer', t[0], t[1], fa); const t2 = fw(-235, 255); park('trailer', t2[0], t2[1], fa + Math.PI); const pw = fw(500, 205); park('plow', pw[0], pw[1], fa); }
+  { const b = fw(185, -70); MAP.hayBay = { x: b[0], y: b[1], a: fa + Math.PI / 2, n: 'המתבן' }; }
   // yard exits (dirt) towards the fields
   MAP.farmExits = [fw(-560, -40), fw(0, -330), fw(560, 40), fw(-430, 260)];
+
+  /* ---------------- stable (west of the farm) ---------------- */
+  const R2 = RNG(2024); // separate stream: new places don't reshuffle the old map
+  { const STB = [2230, 1480], sa = -.3; MAP.stable = STB;
+    const sw = (x, y) => { const q = rot(x, y, sa); return [STB[0] + q[0], STB[1] + q[1]]; };
+    addArea(blobPoly(STB[0], STB[1] + 40, 230, 175, 12, .1, R2, sa), M.YARD, 13, { edge: 'rgba(90,70,40,.3)', edgeW: 6 });
+    addBuilding({ x: STB[0], y: STB[1] - 60, hw: 74, hh: 26, ang: sa, h: 26, kind: 'stable', label: 'האורווה' });
+    const pc = sw(0, 70), pad = blobPoly(pc[0], pc[1], 130, 72, 14, .05, R2, sa); addArea(pad, M.SAND, 13.5, { edge: 'rgba(120,95,60,.4)', edgeW: 4 });
+    for (let i = 0; i < 22; i++) { if (i === 5 || i === 6) continue; const a = i / 22 * TAU, q = sw(Math.cos(a) * 138, 70 + Math.sin(a) * 80); addProp('fence', q[0], q[1], { ang: sa + a + Math.PI / 2, hw: 19 }); }
+    for (let i = 0; i < 4; i++) { const q = sw(-80 + i * 52, 60 + (i % 2 ? 22 : -18)); park('horse', q[0], q[1], sa + R2.range(-2, 2), ['#7a4a24', '#3a2a1e', '#c9a56a', '#e8e2d6'][i]); }
+    { const q = sw(120, -10); park('horse', q[0], q[1], sa + .4, '#9a5a32'); }
+    for (let i = 0; i < 3; i++) { const q = sw(-60 + i * 50, -20); addProp('hay', q[0], q[1]); }
+    { const q = sw(110, 70); addProp('trough', q[0], q[1], { ang: sa + Math.PI / 2 }); }
+    MAP.stableDoor = sw(0, -10); poi('האורווה', MAP.stableDoor[0], MAP.stableDoor[1]); }
+
+  /* ---------------- crop-duster airstrip (far west) ---------------- */
+  { const A = [470, 2300], ra = Math.PI / 2 + .04; MAP.air = A;
+    const aw = (x, y) => { const q = rot(x, y, ra); return [A[0] + q[0], A[1] + q[1]]; };
+    const rw = rectPoly(A[0], A[1], 390, 24, ra);
+    addArea(rectPoly(A[0], A[1], 410, 40, ra), M.GRAVEL, 13, { edge: 'rgba(80,80,80,.3)', edgeW: 4 });
+    addArea(rw, M.ROAD, 14, { edge: '#ddd', edgeW: 2 });
+    deco(bboxOf(rw, 6), 14.5, g => { g.save(); g.translate(A[0], A[1]); g.rotate(ra); g.fillStyle = 'rgba(255,255,255,.85)';
+      for (let x = -330; x <= 330; x += 44) g.fillRect(x, -1.6, 24, 3.2);
+      for (const s of [-1, 1]) { for (let y = -18; y <= 18; y += 6) g.fillRect(s * 372 - 8, y - 1.6, 16, 3.2); g.save(); g.translate(s * 345, 0); g.rotate(s > 0 ? -Math.PI / 2 : Math.PI / 2); g.font = 'bold 16px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s > 0 ? '36' : '18', 0, 0); g.restore(); }
+      g.restore(); });
+    const ap = aw(170, -95), apron = rectPoly(ap[0], ap[1], 70, 55, ra); addArea(apron, M.CONCRETE, 14, { edge: '#888', edgeW: 3 });
+    const hg = aw(180, -170); addBuilding({ x: hg[0], y: hg[1], hw: 52, hh: 40, ang: ra, h: 34, kind: 'hangar', label: 'מנחת המרססים' });
+    { const q = aw(120, -140); addBuilding({ shape: 'circle', x: q[0], y: q[1], r: 12, h: 26, kind: 'tank' }); }
+    { const q = aw(-260, -48); addProp('flag', q[0], q[1]); addProp('sign', aw(240, -40)[0], aw(240, -40)[1]); }
+    { const q = aw(330, 0); park('plane', q[0], q[1], ra + Math.PI, '#f2c230'); }
+    { const q = aw(215, -95); park('plane', q[0], q[1], ra + Math.PI / 2 + .3, '#e8e8e8'); }
+    MAP.airApron = ap; poi('מנחת המרססים', ap[0], ap[1]); }
 
   /* ---------------- industrial zone (west) ---------------- */
   const IC = [1480, 2380], ia = -.2; MAP.IC = IC;
@@ -208,7 +244,7 @@ function genMap(seed) {
   const FAC = [
     { deg: 205, kind: 'office', label: 'המזכירות', hw: 56, hh: 38, h: 30 },
     { deg: 160, kind: 'club', label: 'מועדון לחבר', hw: 60, hh: 40, h: 28 },
-    { deg: 330, kind: 'shop', label: 'הצרכנייה', hw: 60, hh: 40, h: 30 },
+    { deg: 330, kind: 'shop', label: 'הכלבו', hw: 60, hh: 40, h: 30 },
     { deg: 20, kind: 'clinic', label: 'המרפאה', hw: 50, hh: 38, h: 26 },
     { deg: 250, kind: 'laundry', label: 'המכבסה', hw: 46, hh: 32, h: 26 },
     { deg: 290, kind: 'hall', label: 'בית העם', hw: 72, hh: 46, h: 40 },
@@ -222,10 +258,18 @@ function genMap(seed) {
     f.door = door; poi(f.label, door[0], door[1]);
     const pe = [Hb[0] + Math.cos(a) * 150, Hb[1] + Math.sin(a) * 110];
     addRoad(spline([door, [lerp(door[0], pe[0], .5) + R.range(-20, 20), lerp(door[1], pe[1], .5) + R.range(-20, 20)], pe], 16), 'path', 14);
-    if (f.kind === 'shop') MAP.shops.push({ x: door[0], y: door[1], kind: 'shop', name: 'הצרכנייה' });
+    if (f.kind === 'shop') MAP.shops.push({ x: door[0], y: door[1], kind: 'shop', name: 'הכלבו' });
+    if (f.kind === 'laundry') MAP.shops.push({ x: door[0], y: door[1], kind: 'commune', name: 'הקומונה' });
     if (f.kind === 'clinic') { MAP.shops.push({ x: door[0], y: door[1], kind: 'clinic', name: 'המרפאה' }); MAP.clinic = door; }
     if (f.kind === 'office') MAP.office = door;
   }
+  // the work roster board ("סידור עבודה") outside the dining hall
+  MAP.phones.push({ x: Hb[0] - 115, y: Hb[1] + 36, f: 'board' });
+  // ekonomia (kitchen store) behind the dining hall, and the children's house by the gan
+  const placeB = (cands, o, om, rm) => { for (const [x, y] of cands) { const b = Object.assign({ x, y }, o); if (buildingOverlap(b, om ?? 14) || rectNearRoad(b, rm ?? 7)) continue; addBuilding(b); reserve(x, y, Math.max(b.hw, b.hh) + 20); return b; } return null; };
+  { const cands = [[0, -172], [70, -172], [-70, -172], [175, -112], [-178, -112], [0, -230]].map(([x, y]) => [Hb[0] + x, Hb[1] + y]);
+    const ek = placeB(cands, { hw: 40, hh: 26, ang: dAng, h: 24, kind: 'ekonomia', label: 'האקונומיה' }, 4, 3);
+    if (ek) { poi('האקונומיה', ek.x + 52, ek.y - 10); MAP.ekonomia = ek; } }
   // hub plaza ring path
   addRoad(spline(blobPoly(Hb[0], Hb[1] + 10, 150, 112, 10, .05, R), 16, true), 'path', 16, { closed: true, mat: M.PAVERS });
   // pool complex
@@ -245,8 +289,10 @@ function genMap(seed) {
     reserve(cc[0], cc[1], 90); poi('מגרש הכדורסל', cc[0], cc[1]); }
   // children area: gan, school, playground
   { const gc = [KC[0] - 440, KC[1] + 300];
-    addBuilding({ x: gc[0], y: gc[1], hw: 50, hh: 34, ang: .5, h: 24, kind: 'gan', label: 'גן "רימון"' });
+    addBuilding({ x: gc[0], y: gc[1], hw: 50, hh: 34, ang: .5, h: 24, kind: 'gan', label: 'גן רימון' });
     addBuilding({ x: gc[0] - 140, y: gc[1] - 140, hw: 80, hh: 38, ang: .7, h: 32, kind: 'school', label: 'בית הספר' });
+    { const kh = placeB([[150, -70], [10, -175], [-175, 40], [40, 140], [190, 40]].map(([x, y]) => [gc[0] + x, gc[1] + y]), { hw: 46, hh: 28, ang: .5, h: 24, kind: 'kidshouse', label: 'בית הילדים' });
+      if (kh) poi('בית הילדים', kh.x, kh.y + 42); }
     const sb = blobPoly(gc[0] + 95, gc[1] + 60, 48, 36, 10, .1, R); addArea(sb, M.SANDBOX, 14, { edge: '#a88' });
     addProp('swing', gc[0] + 80, gc[1] + 45, { ang: .5 }); addProp('slide', gc[0] + 115, gc[1] + 75, { ang: .5 });
     reserve(gc[0] - 60, gc[1] - 60, 150); poi('גן הילדים', gc[0] + 40, gc[1] - 50); }
@@ -261,7 +307,7 @@ function genMap(seed) {
     addBuilding({ x: z[0] - 30, y: z[1] - 25, hw: 18, hh: 14, h: 18, kind: 'shed', ang: .2 });
     for (let i = 0; i < 3; i++) S.animals.push({ type: 'goat', x: z[0] + R.range(-30, 40), y: z[1] + R.range(-10, 30), zone: { x: z[0], y: z[1], r: 55 } });
     S.animals.push({ type: 'peacock', x: z[0] + 20, y: z[1] + 10, zone: { x: z[0], y: z[1], r: 55 } });
-    reserve(z[0], z[1], 100); poi('פינת החי', z[0], z[1] + 70); }
+    reserve(z[0], z[1], 100); poi('המשק החי', z[0], z[1] + 70); }
 
   // spokes from hub to ring, avoiding facilities
   const interiorPaths = [];
@@ -409,6 +455,8 @@ function genMap(seed) {
     if (dist(x, y, MAP.soccer[0], MAP.soccer[1]) < 230) return true;
     for (const g of groves) if (pointInPoly(x, y, g)) return true;
     if (dist(x, y, MAP.gas[0], MAP.gas[1]) < 280) return true;
+    if (dist(x, y, MAP.stable[0], MAP.stable[1] + 40) < 300) return true;
+    if (Math.abs(x - MAP.air[0]) < 270 && Math.abs(y - MAP.air[1]) < 470) return true;
     if (polylineDist(x, y, wPl) < 150) return true;
     if (nearRoad(x, y, 22, RK.highway | RK.asphalt)) return true;
     return false;
@@ -492,6 +540,7 @@ function genMap(seed) {
   for (const x of [500, 2100, 4300, 5600]) { const p = hwPl[nearestIdx(hwPl, x, 4300)]; connect([p[0], p[1] - 36]); }
   connect(iw(-600, 0), 'indW'); connect(spine[spine.length - 1]); connect(plAt(accPl, .62)); connect(Ng);
   { const p = ringAt(135); connect([p[0] - 20, p[1] + 10]); } { const p = ringAt(-40); connect(p); } { const p = ringAt(220); connect(p); }
+  connect(MAP.stableDoor); connect(MAP.airApron);
 
   // tractor spots: random field edges
   const fl = fields.filter(f => ['wheat', 'plowed', 'stubble', 'sunfl', 'alfalfa', 'cotton'].includes(f.crop));
@@ -509,12 +558,14 @@ function genMap(seed) {
 
   /* ---------------- districts ---------------- */
   MAP.district = (x, y) => {
-    if (dist(x, y, MAP.gas[0], MAP.gas[1]) < 300) return 'צומת הקיבוץ';
+    if (dist(x, y, MAP.gas[0], MAP.gas[1]) < 300) return 'הסיבוב';
+    if (dist(x, y, MAP.stable[0], MAP.stable[1]) < 280) return 'האורווה';
+    if (Math.abs(x - MAP.air[0]) < 260 && Math.abs(y - MAP.air[1]) < 460) return 'מנחת המרססים';
     if (polylineDist(x, y, hwPl) < 90) return 'כביש 99';
     if (pointInPoly(x, y, fencePl)) {
       if (dist(x, y, Hb[0], Hb[1]) < 360) return 'לב הקיבוץ';
       const d = (Math.atan2(y - KC[1], x - KC[0]) * 180 / Math.PI + 360) % 360;
-      return d >= 180 && d < 270 ? 'שכונת הוותיקים' : d >= 270 ? 'שכונת הגבעה' : d < 70 ? 'הבריכה והמקלט' : 'שכונת הצעירים';
+      return d >= 180 && d < 270 ? 'שיכון ותיקים' : d >= 270 ? 'שכונת הגבעה' : d < 70 ? 'הבריכה והמקלט' : 'שכונת הצעירים';
     }
     if (pointInPoly(x, y, yard)) return 'המשק — רפת ולול';
     if (pointInPoly(x, y, indPoly)) return 'אזור התעשייה';

@@ -38,6 +38,8 @@ function touchPress(b) {
     case 'map': pressed.KeyM = true; break;
     case 'radio': pressed.KeyR = true; break;
     case 'horn': pressed.KeyH = true; break;
+    case 'hitch': pressed.KeyG = true; break;
+    case 'pto': pressed.KeyT = true; break;
   }
   if (navigator.vibrate) try { navigator.vibrate(8); } catch (e) { }
 }
@@ -100,6 +102,7 @@ function touchDrive(v, c) {       // drive toward the stick direction (camera ne
   c.hb = c.hb || TOUCH.hb;
   if (TOUCH.mag <= 0) return !!TOUCH.stick;
   const ta = Math.atan2(TOUCH.dy, TOUCH.dx), d = angDiff(v.a, ta);
+  if (v.d.plane && v.alt > 0) { c.steer = clamp(d * 2.2, -1, 1); c.thr = TOUCH.mag; return true; } // in the air: point where to fly
   if (Math.abs(d) < 2.1 || v.vf > 60) {            // forward (or still rolling forward: steer while braking hard)
     c.steer = clamp(d * 2.6, -1, 1);
     c.thr = Math.abs(d) < 2.1 ? TOUCH.mag * (Math.abs(d) > 1.2 ? .6 : 1) : -1;
@@ -153,7 +156,10 @@ function drawTouch() {
   // right cluster
   const ax = VW - 78 * sc, ay = VH - 78 * sc;
   const ranged = pl.wp !== 'fist';
-  if (!v || ranged) tBtn('att', ax, ay, 44 * sc, { icon: pl.wp === 'fist' ? 'fist' : pl.wp, bg: 'rgba(160,40,30,.55)', ring: '#ffb3a8' });
+  if (v && v.d.plane) tBtn('att', ax, ay, 44 * sc, { t: 'ריסוס', ts: 14, bg: 'rgba(90,140,60,.6)', ring: '#d6f0c4' });
+  else if (!v || ranged) tBtn('att', ax, ay, 44 * sc, { icon: pl.wp === 'fist' ? 'fist' : pl.wp, bg: 'rgba(160,40,30,.55)', ring: '#ffb3a8' });
+  if (v && v.type === 'tractor') tBtn('hitch', ax - 200 * sc, ay - 55 * sc, 24 * sc, { t: 'וו', ts: 14, bg: 'rgba(60,60,60,.6)' });
+  if (v && (v.type === 'combine' || (v.type === 'tractor' && v.hitch && v.hitch.type === 'plow'))) tBtn('pto', ax - 185 * sc, ay + 15 * sc, 24 * sc, { t: 'PTO', ts: 11, bg: (v.pto || (v.hitch && v.hitch.pto)) ? 'rgba(230,140,30,.75)' : 'rgba(60,60,60,.6)' });
   const am = { fist: '', toto: `×${pl.inv.toto}`, soaker: `${pl.inv.soaker.toFixed(0)}ש'`, balloon: `×${pl.inv.balloon}`, ext: `${pl.inv.ext.toFixed(0)}ש'` }[pl.wp];
   const nW = Object.keys(pl.inv).filter(k => pl.inv[k] > 0).length;
   if (nW > 1) tBtn('wp', ax - 92 * sc, ay + 22 * sc, 26 * sc, { t: '⇄', ts: 18, sub: am });

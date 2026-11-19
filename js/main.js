@@ -3,14 +3,14 @@
    main.js — boot sequence, state machine, main loop
    ================================================================ */
 const BOOT = [
-  ['טוחנים חומוס לטקסטורות', () => buildTextures()],
+  ['מסדרים את סידור העבודה', () => buildTextures()],
   ['שותלים את הקיבוץ', () => genMap(1910)],
-  ['משקים את הדשא', () => rasterizeMaterials()],
+  ['סופרים קולות באסיפה', () => rasterizeMaterials()],
   ['מפזרים שיחים', () => genWild()],
   ['סוללים שבילים', () => buildGraph()],
   ['מגהצים את הקרקע', () => { Ground.init(); Ground.buildMini(); }],
-  ['מעירים את הוותיקים', () => spawnWorld()],
-  ['מחביאים ביצי זהב', () => Pickups.init()],
+  ['מעירים את שומרת הלילה', () => spawnWorld()],
+  ['מקפלים בקומונה', () => Pickups.init()],
   ['מכינים קפה בחדר האוכל', () => { placePlayerStart(); Ground.prebake(CAM.x, CAM.y, 900); }],
 ];
 let bootI = 0;
@@ -43,7 +43,7 @@ const INTRO_TIPS = [[1.5, 'WASD / חיצים לתנועה · Shift לריצה'],
 let introT = -1;
 function startPlay(fresh) {
   G.state = 'play'; Audio2.init(); G.time = G.time || 0;
-  G.bigBanner(fresh ? 'ברוכים הבאים לקיבוץ' : 'חזרת לקיבוץ', fresh ? 'תיהנו מהשקט. בינתיים.' : 'הוועד עדיין זוכר', '#ffd84a');
+  G.bigBanner(fresh ? 'חזרת מהצבא' : 'חזרת לקיבוץ', fresh ? 'סידור העבודה כבר מחכה' : 'הוועד עדיין זוכר', '#ffd84a');
   introT = fresh ? 0 : -1; G.radioCard = 0;
 }
 
@@ -55,6 +55,7 @@ function update(dt) {
   interactTick();
   playerTick(dt);
   entitiesTick(dt);
+  Farm.tick(dt);
   Combat.tick(dt); FX.tick(dt); Pickups.tick(dt);
   wantedTick(dt); garageTick(dt);
   Missions.tick(dt); Missions.hostileTick(dt); Rampage.tick(dt);
@@ -82,7 +83,7 @@ function titleTick(dt) {
   CAM.z = clamp(Math.min(VW, VH * 1.45) / 1050, .62, 1.5) * .95; CAM.hw = VW / 2 / CAM.z; CAM.hh = VH / 2 / CAM.z; CAM.sx = CAM.sy = 0;
 }
 function frame(now) {
-  let dt = (now - last) / 1000; last = now; dt = Math.min(dt, .05);
+  let dt = (now - last) / 1000; last = now; dt = clamp(dt, 0, .05);
   try {
     if (G.state === 'loading') {
       drawLoading();
@@ -91,7 +92,7 @@ function frame(now) {
     } else if (G.state === 'title') {
       titleTick(dt); draw(dt); drawMenu();
       const r = menuInput();
-      if (r === 'new') newGame(); else if (r === 'continue') continueGame(); else if (r === 'controls') { MENU.mode = 'controls'; MENU.sel = 0; } else if (r === 'back') { MENU.mode = 'title'; MENU.sel = 0; }
+      if (r === 'new') newGame(); else if (r === 'continue') continueGame(); else if (r === 'controls' || r === 'credits') { MENU.mode = r; MENU.sel = 0; } else if (r === 'back') { MENU.mode = 'title'; MENU.sel = 0; }
     } else if (G.state === 'play') {
       const rot = TOUCH.on && VH > VW;   // phone held upright: freeze until rotated
       if (P('Escape', 'KeyP')) { G.state = 'pause'; MENU.mode = 'pause'; MENU.sel = 0; }
@@ -101,9 +102,9 @@ function frame(now) {
       if (rot) { G.time += dt; drawRotate(); }
     } else if (G.state === 'pause') {
       draw(0); drawHUD(0); drawMenu();
-      if (MENU.mode === 'controls') { const r = menuInput(); if (r) { MENU.mode = 'pause'; MENU.sel = 0; } }
+      if (MENU.mode === 'controls' || MENU.mode === 'credits') { const r = menuInput(); if (r) { MENU.mode = 'pause'; MENU.sel = 0; } }
       else { const r = menuInput(); if (r === 'resume') G.state = 'play'; else if (r === 'map') G.state = 'map';
-        else if (r === 'music' || r === 'sfx') { Audio2.vol[r] = Audio2.vol[r] >= .95 ? 0 : Math.round(Audio2.vol[r] * 10 + 2) / 10; Audio2.vol[r] = Math.min(1, Audio2.vol[r]); Audio2.applyVol(); Audio2.sfx('click'); } else if (r === 'controls') { MENU.mode = 'controls'; MENU.sel = 0; } else if (r === 'new') newGame(); }
+        else if (r === 'music' || r === 'sfx') { Audio2.vol[r] = Audio2.vol[r] >= .95 ? 0 : Math.round(Audio2.vol[r] * 10 + 2) / 10; Audio2.vol[r] = Math.min(1, Audio2.vol[r]); Audio2.applyVol(); Audio2.sfx('click'); } else if (r === 'controls' || r === 'credits') { MENU.mode = r; MENU.sel = 0; } else if (r === 'new') newGame(); }
       Audio2.radioTick(false);
     } else if (G.state === 'map') {
       draw(0); drawBigMap(); if (P('KeyM', 'Escape', 'Enter')) G.state = 'play'; Audio2.radioTick(false);

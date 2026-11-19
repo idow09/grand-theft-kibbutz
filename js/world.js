@@ -157,6 +157,7 @@ const PT = {
   phone: { s: 'c', r: 5, solid: 1, need: 99, val: 0 },
   beehive: { s: 'r', hw: 6, hh: 5, solid: 0, need: 0, val: 15, snd: 'wood', burst: ['#f3d27a', '#fff'] },
   cones: { s: 'c', r: 4, solid: 0, need: 0, val: 5, snd: 'thud', burst: ['#ff7a1a', '#fff'] },
+  ygate: { s: 'r', hw: 19, hh: 2, solid: 1, need: 3, val: 80, snd: 'crash', burst: ['#ffd23f', '#e0b52a', '#333'] },
 };
 function addProp(t, x, y, o) {
   const d = PT[t]; if (!d) throw new Error('prop ' + t);

@@ -5,8 +5,10 @@
 const FACT = {
   cow: { n: 'הרפתנים', boss: 'שאולי מהרפת', c: '#e0a95a', rival: 'youth' },
   youth: { n: 'הנוער', boss: 'עומרי מהמקלט', c: '#4db8f0', rival: 'kitchen' },
-  kitchen: { n: 'צוות המטבח', boss: 'צביה מהמטבח', c: '#f26b95', rival: 'cow' },
+  kitchen: { n: 'האקונומיה', boss: 'צביה האקונומית', c: '#f26b95', rival: 'cow' },
 };
+const BOARD = { n: 'סידור עבודה', boss: 'סידור עבודה', c: '#d8dee2' };
+const phoneFact = f => FACT[f] || BOARD;
 const Missions = (() => {
   const chain = { cow: 0, youth: 0, kitchen: 0 };
   const pt = n => { const p = POI[n]; return p ? { x: p.x, y: p.y, n } : { x: MAP.hub[0], y: MAP.hub[1], n: 'חדר האוכל' }; };
@@ -80,6 +82,26 @@ const Missions = (() => {
       } }, o);
   }
 
+  function collect(o) { // walk/drive over each crate
+    const left = o.pts.slice(); let got = 0;
+    return Object.assign({ markers: () => left, hud: () => `${o.what}: ${got}/${o.pts.length}`,
+      update() { const p = P0(), r = Player.veh ? Player.veh.d.L / 2 + 6 : 16; for (let i = left.length - 1; i >= 0; i--) if (dist(left[i].x, left[i].y, p.x, p.y) < r) { left.splice(i, 1); got++; Audio2.sfx('pickup'); FX.burst(p.x, p.y, ['#3c7a2e', '#5a8a2a', '#c9a36a'], 8, 60, 3); G.addScore(10, p.x, p.y, true); }
+        if (!left.length) return 'done'; } }, o);
+  }
+  // back a hitched wagon into the hay shed: the classic kibbutznik exam
+  function reverseTrailer(o) {
+    const bay = MAP.hayBay; let tr = vehicles.find(v => v.type === 'trailer' && !v.dead && dist(v.x, v.y, bay.x, bay.y) < 900);
+    if (!tr) tr = mkVeh('trailer', bay.x + 60, bay.y + 140, bay.a); tr.persistent = true;
+    let hold = 0;
+    return Object.assign({
+      markers: () => { const v = Player.veh; if (!v || v.type !== 'tractor') return [Object.assign({ n: 'טרקטור' }, vehicles.find(q => q.type === 'tractor' && !q.dead && !q.driver && dist(q.x, q.y, bay.x, bay.y) < 1500) || { x: bay.x, y: bay.y + 200 })]; if (v.hitch !== tr) return [{ x: tr.x, y: tr.y, n: 'העגלה' }]; return [bay]; },
+      hud: () => { const v = Player.veh; if (!v || v.type !== 'tractor') return 'עלה על טרקטור'; if (v.hitch !== tr) return 'סע ברוורס עד העגלה ולחץ G'; const d = Math.round(dist(tr.x, tr.y, bay.x, bay.y)), a = Math.round(Math.abs(angDiff(tr.a, bay.a)) * 57); return `ברוורס לתוך המתבן · מרחק ${d} · זווית ${a}°`; },
+      update(dt) {
+        const v = Player.veh; if (tr.dead) return 'fail:העגלה התפרקה';
+        if (v && v.type === 'tractor' && v.hitch === tr && dist(tr.x, tr.y, bay.x, bay.y) < 24 && Math.abs(angDiff(tr.a, bay.a)) < .42 && Math.abs(v.vf) < 25) { hold += dt; if (hold > .8) return 'done'; } else hold = 0;
+      } }, o);
+  }
+
   /* ---------- story chains ---------- */
   const CH = {
     cow: [
@@ -93,13 +115,13 @@ const Missions = (() => {
       { title: 'רמקולים למסיבה', brief: 'אחי, הרמקולים בבית העם ואנחנו בבריכה. יש לך דקה וחצי לפני שהאווירה מתה.', make: () => deliver({ from: pt('בית העם'), to: pt('הבריכה'), item: 'רמקולים', time: 100, reward: 280 }) },
       { title: 'מלחמת מים', brief: 'מלחמת מים כמו פעם! הפל 8 אנשים עם מים — בלונים או רובה. הנה תחמושת.', make: () => koCount({ what: 'נרטבו', n: 8, how: ['balloon', 'soaker'], give: { balloon: 12, soaker: 20 }, wp: 'balloon', time: 100, reward: 380 }) },
       { title: 'בורחים מהקב"ט', brief: 'יש לנו הימור עם החבר\'ה מהקיבוץ השכן. תעצבן את הוועד עד שלוש דרגות רוגז — ותברח.', make: () => escape({ lvl: 3, time: 260, reward: 550 }) },
-      { title: 'מרוץ טוסטוסים', brief: 'המרוץ השנתי! קח את הטוסטוס ליד המקלט ותעבור בכל הנקודות. דרך החורשה, דרך הוואדי. אל תתהפך.', make: () => { const s = pt('המקלט'); const sc = mkVeh('scooter', s.x + 20, s.y + 20, 0, '#ff5a3a'); sc.persistent = true; const names = ['החורשה', 'תחנת הדלק', 'השדה הסולארי', 'מגרש הכדורגל', 'מפעל השימורים', 'החניון', 'פינת החי', 'המקלט']; const pts = names.map(n => POI[n] ? pt(n) : null).filter(Boolean); return race({ pts, veh: 'scooter', time: 230, reward: 750 }); } },
+      { title: 'מרוץ טוסטוסים', brief: 'המרוץ השנתי! קח את הטוסטוס ליד המקלט ותעבור בכל הנקודות. דרך החורשה, דרך הוואדי. אל תתהפך.', make: () => { const s = pt('המקלט'); const sc = mkVeh('scooter', s.x + 20, s.y + 20, 0, '#ff5a3a'); sc.persistent = true; const names = ['החורשה', 'תחנת הדלק', 'השדה הסולארי', 'מגרש הכדורגל', 'מפעל השימורים', 'החניון', 'המשק החי', 'המקלט']; const pts = names.map(n => POI[n] ? pt(n) : null).filter(Boolean); return race({ pts, veh: 'scooter', time: 230, reward: 750 }); } },
     ],
     kitchen: [
       { title: 'שניצל חם', brief: 'סיר שניצלים להרחבה. אם הוא מגיע קר, אני יודעת מי אשם.', make: () => deliver({ from: pt('חדר האוכל'), to: pt('ההרחבה'), item: 'סיר שניצלים', time: 80, reward: 280 }) },
       { title: 'תרנגולות במנוסה', brief: 'מישהו השאיר את הלול פתוח. שש תרנגולות מסתובבות בקיבוץ. בלי ביצים אין שקשוקה!', make: () => chickens({ n: 6, time: 140, reward: 380 }) },
       { title: 'הקלנועית של שושנה', brief: 'שושנה מהבריכה חייבת לי כבר שנתיים. תביא לי את הקלנועית האדומה שלה לדלת האחורית של המטבח. היא תצעק. תתעלם.', make: () => { const pp = pt('הבריכה'); const ph = MAP.phones.find(p => p.f === 'kitchen'); return stealBring({ what: 'הקלנועית של שושנה', to: { x: ph.x, y: ph.y, n: 'דלת המטבח' }, time: 200, reward: 480, spawn: () => mkVeh('kalnoit', pp.x + 30, pp.y + 10, 0, '#c0392b'), onSteal: v => { const s = mkPed('elder', v.x + 20, v.y); s.state = 'chase'; say(s, 'זאת הקלנועית שלי!', 2.5); G.heat = Math.max(G.heat, 3.1); } }); } },
-      { title: 'קוטג\' מהצומת', brief: 'הצרכנייה ריקה. יש קוטג\' במרכול בצומת. הוועד אסר על קניות מבחוץ, אז הם ירדפו אחריך. תביא את הארגזים לחדר האוכל.', make: () => deliver({ from: pt('תחנת הדלק'), to: pt('חדר האוכל'), item: 'ארגזי קוטג\'', time: 220, reward: 900, onPick: () => { G.heat = Math.max(G.heat, 5.6); } }) },
+      { title: 'קוטג\' מהצומת', brief: 'הכלבו ריק. יש קוטג\' במרכול בצומת. הוועד אסר על קניות מבחוץ, אז הם ירדפו אחריך. תביא את הארגזים לחדר האוכל.', make: () => deliver({ from: pt('תחנת הדלק'), to: pt('חדר האוכל'), item: 'ארגזי קוטג\'', time: 220, reward: 900, onPick: () => { G.heat = Math.max(G.heat, 5.6); } }) },
     ],
   };
   const REPEAT = [
@@ -109,11 +131,35 @@ const Missions = (() => {
     f => destroyCount({ title: 'בלגן כללי', desc: 'שבור 25 דברים תוך 90 שניות', what: 'נשבר', n: 25, time: 90, reward: 400 }),
     f => escape({ title: 'תעשה רעש', desc: 'עצבן את הוועד עד 2 ותתחמק', lvl: 2, time: 200, reward: 350 }),
   ];
+  // faction-flavoured jobs, mixed in with the generic ones
+  const FJOBS = {
+    cow: [
+      () => reverseTrailer({ title: 'רוורס עם עגלה', desc: 'כל בן משק צריך לדעת להכניס עגלה ברוורס. תחבר את העגלה לטרקטור (G) ותכניס אותה ברוורס למתבן. ישר, בלי ג\'קנייף.', time: 210, reward: 520 }),
+      () => avocado({ title: 'גיוס אבוקדו', time: 170, reward: 480 }),
+    ],
+    youth: [
+      () => deliver({ title: 'פריצה לאקונומיה', desc: 'החבר\'ה במקלט רעבים והפאב סגור. תיכנס לאקונומיה דרך החלון האחורי, תוציא ארגז חטיפים ותביא למקלט. ותסגור את החלון אחריך.', from: pt('האקונומיה'), to: pt('המקלט'), item: 'ארגז חטיפים', time: 120, reward: 420, onPick: () => { G.heat = Math.max(G.heat, 3.1); G.msg('האקונומית ראתה אותך דרך החלון!', '#ff9b6b'); } }),
+    ],
+    kitchen: [
+      () => avocado({ title: 'גיוס אבוקדו', time: 170, reward: 480 }),
+    ],
+  };
+  function avocado(o) {
+    const fs = MAP.fields.filter(f => f.crop === 'avocado'); const f = fs.length ? fs.reduce((a, b) => dist(a.c[0], a.c[1], P0().x, P0().y) < dist(b.c[0], b.c[1], P0().x, P0().y) ? a : b) : MAP.fields[0];
+    const pts = []; for (let t = 0; t < 400 && pts.length < 8; t++) { const x = f.c[0] + rnd(-120, 120), y = f.c[1] + rnd(-100, 100); if (pointInPoly(x, y, f.inner) && !solidAt(x, y, 9)) pts.push({ x, y, n: 'ארגז' }); }
+    return collect(Object.assign({ what: 'ארגזי אבוקדו', pts, desc: 'סידור העבודה: גיוס אבוקדו. כולם. כן, גם אתה. 8 ארגזים במטע, לפני שהשמש שוקעת.' }, o));
+  }
   function call(ph) {
+    if (ph.f === 'board') { // the work roster: a random job for one of the factions
+      const f = pick(Object.keys(FACT)); const list = REPEAT.map(mk => () => mk(f)).concat(FJOBS[f]); const rt = pick(list)();
+      rt.brief = rt.desc; rt.fac = f; rt.story = false; rt.t = rt.time; if (rt.start) rt.start();
+      G.mission = rt; G.phoneCall = { who: 'סידור עבודה', text: `${rt.title} (בשביל ${FACT[f].n}) · ${rt.desc}`, col: BOARD.c, life: 9 };
+      G.bigBanner(rt.title, 'סידור עבודה', BOARD.c, 2.2); Audio2.sfx('alert'); return;
+    }
     const f = ph.f, list = CH[f], i = chain[f];
     let def, story = true;
     if (G.respect[f] < -30) { G.phoneCall = { who: FACT[f].boss, text: 'אתה עוד מעז להתקשר? אחרי מה שעשית בשביל המתחרים? עזוב אותנו.', col: FACT[f].c, life: 6 }; return; }
-    if (i < list.length) def = list[i]; else { story = false; const mk = pick(REPEAT); def = { title: null, brief: null, make: () => mk(f) }; }
+    if (i < list.length) def = list[i]; else { story = false; const opts = REPEAT.map(mk => () => mk(f)).concat(FJOBS[f] || []), mk = pick(opts); def = { title: null, brief: null, make: mk }; }
     const rt = def.make(); rt.title = rt.title || def.title; rt.brief = def.brief || rt.desc; rt.fac = f; rt.story = story; rt.t = rt.time;
     if (rt.start) rt.start();
     G.mission = rt; G.phoneCall = { who: FACT[f].boss, text: rt.brief, col: FACT[f].c, life: 9 };
@@ -127,7 +173,7 @@ const Missions = (() => {
       const allDone = Object.keys(CH).every(k => chain[k] >= CH[k].length);
       G.bigBanner('משימה הושלמה!', `+${m.reward} ₪ · כבוד אצל ${FACT[m.fac].n}` + (m.story && chain[m.fac] === CH[m.fac].length ? ' · הסיפור של ' + FACT[m.fac].n + ' הושלם!' : ''), '#9be26b');
       Audio2.sfx('win');
-      if (allDone && !G.done.all) { G.done.all = 1; setTimeout(() => G.bigBanner('מלך הקיבוץ!', 'השלמת את כל הסיפורים. הוועד מכנס אסיפת חירום', '#ffd84a', 6), 3500); G.money += 5000; }
+      if (allDone && !G.done.all) { G.done.all = 1; setTimeout(() => G.bigBanner('התקבלת לחברות!', 'השלמת את כל הסיפורים. האסיפה הצביעה בעדך', '#ffd84a', 6), 3500); G.money += 5000; }
       Save.save();
     } else { G.respect[m.fac] = Math.max(-100, G.respect[m.fac] - 5); G.bigBanner('המשימה נכשלה', why || '', '#ff8a8a'); Audio2.sfx('lose'); }
   }

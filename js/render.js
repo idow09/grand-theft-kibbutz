@@ -13,11 +13,11 @@ let shadowCv = null, lightCv = null, mouseScreen = null;
 addEventListener('mousemove', e => { mouseScreen = { x: e.clientX, y: e.clientY }; });
 
 function camTick(dt) {
-  const v = Player.veh, tx = v ? v.x + v.vx * .42 : Player.x + Player.vx * .15, ty = v ? v.y + v.vy * .42 : Player.y + Player.vy * .15;
+  const v = Player.veh, la = v && v.d.plane ? .9 : .42, tx = v ? v.x + v.vx * la : Player.x + Player.vx * .15, ty = v ? v.y + v.vy * la : Player.y + Player.vy * .15;
   CAM.x += (tx - CAM.x) * Math.min(1, dt * 4.5); CAM.y += (ty - CAM.y) * Math.min(1, dt * 4.5);
   const sp = v ? Math.hypot(v.vx, v.vy) : 0;
   const base = clamp(Math.min(VW, VH * 1.45) / 1050, .62, 1.5) * (TOUCH.on && VH < 600 ? 1.18 : 1);
-  const tz = (v ? 1.02 - Math.min(.36, sp / 650) - (v.d.L > 70 ? .12 : 0) : 1.16) * base * (G.mapZoom || 1);
+  const tz = (v ? (v.d.plane ? .95 - v.alt * .28 - Math.min(.16, sp / 2000) : 1.02 - Math.min(.36, sp / 650) - (v.d.L > 70 ? .12 : 0)) : 1.16) * base * (G.mapZoom || 1);
   CAM.z += (tz - CAM.z) * Math.min(1, dt * 1.8);
   CAM.hw = VW / 2 / CAM.z; CAM.hh = VH / 2 / CAM.z;
   CAM.sx = (Math.random() - .5) * G.shake; CAM.sy = (Math.random() - .5) * G.shake; G.shake *= Math.exp(-7 * dt);
@@ -140,12 +140,29 @@ function drawPed(g, p) {
 }
 function drawStars(g, x, y, id) { const t = G.time * 5 + id; for (let i = 0; i < 3; i++) { const a = t + i * 2.09; g.fillStyle = i % 2 ? '#ffe14a' : '#fff'; g.save(); g.translate(x + Math.cos(a) * 8, y + Math.sin(a) * 3); g.rotate(t); g.fillRect(-1.6, -1.6, 3.2, 3.2); g.restore(); } }
 function drawUmbrella(g, x, y, col) { g.save(); g.translate(x, y - 2); for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? shade(col, -.25) : col; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 10, i / 8 * TAU, (i + 1) / 8 * TAU); g.closePath(); g.fill(); } g.restore(); }
+function planeShadow(g, v, ox, oy, a) {
+  const d = v.d; g.save(); g.translate(v.x + ox, v.y + oy); g.rotate(v.a); g.fillStyle = `rgba(0,0,0,${a})`;
+  g.fillRect(-2, -d.W / 2 * (1 - Math.abs(v.bank || 0) * .25), 16, d.W * (1 - Math.abs(v.bank || 0) * .25)); g.fillRect(-d.L / 2, -5, d.L, 10); g.fillRect(-d.L / 2, -15, 9, 30); g.restore();
+}
+function drawPlaneBody(g, v, k) {
+  const s = SPR.vehicle(v.type, v.col, v.dead);
+  g.save(); g.translate(v.x, v.y); g.rotate(v.a); g.scale(k, k * (1 - Math.abs(v.bank || 0) * .22));
+  g.drawImage(s.cv, -s.w / 2, -s.h / 2, s.w, s.h);
+  if (v.prop) { g.fillStyle = 'rgba(40,40,40,.28)'; g.beginPath(); g.ellipse(v.d.L / 2 + 1, 0, 1.6, 9, 0, 0, TAU); g.fill(); g.strokeStyle = 'rgba(20,20,20,.75)'; g.lineWidth = 1.2; const pa = v.prop % Math.PI; g.beginPath(); g.moveTo(v.d.L / 2 + 1, -Math.cos(pa) * 9); g.lineTo(v.d.L / 2 + 1, Math.cos(pa) * 9); g.stroke(); }
+  g.restore();
+}
 function drawVehicle(g, v) {
-  const d = v.d, s = SPR.vehicle(v.type, v.col, v.dead);
-  g.fillStyle = `rgba(0,0,0,${.28 * (1 - ENV.night * .5)})`; g.save(); g.translate(v.x + ENV.sunX * 3, v.y - ENV.sunY * 3 + 2); g.rotate(v.a); g.beginPath(); g.roundRect(-d.L / 2, -d.W / 2, d.L, d.W, 5); g.fill(); g.restore();
+  const d = v.d;
+  if (d.plane && v.alt > .02) { planeShadow(g, v, ENV.sunX * v.alt * 110, -ENV.sunY * v.alt * 110 + v.alt * 30, .22 * (1 - ENV.night * .5)); return; }
+  if (v.hitch) { const h = Farm.hitchPt(v), q = Farm.tonguePt(v.hitch); g.strokeStyle = '#2a2a2a'; g.lineWidth = 2.2; g.beginPath(); g.moveTo(h[0], h[1]); g.lineTo(q[0], q[1]); g.stroke(); }
+  g.fillStyle = `rgba(0,0,0,${.28 * (1 - ENV.night * .5)})`; g.save(); g.translate(v.x + ENV.sunX * 3, v.y - ENV.sunY * 3 + 2); g.rotate(v.a); g.beginPath(); if (d.plane) { g.restore(); planeShadow(g, v, ENV.sunX * 3, -ENV.sunY * 3 + 2, .28 * (1 - ENV.night * .5)); g.save(); g.translate(v.x, v.y); g.rotate(v.a); } else if (d.horse) g.ellipse(0, 0, 16, 7, 0, 0, TAU); else g.roundRect(-d.L / 2, -d.W / 2, d.L, d.W, 5); g.fill(); g.restore();
+  if (d.plane) { drawPlaneBody(g, v, 1); return; }
+  const s = d.horse ? SPR.horse(v.col, Math.floor((v.gait || 0) * 1.5) % SPR.HFRAMES) : SPR.vehicle(v.type, v.col, v.dead);
   g.save(); g.translate(v.x, v.y); g.rotate(v.a);
   g.drawImage(s.cv, -s.w / 2, -s.h / 2, s.w, s.h);
-  if (d.rider && v.driver) { const lk = v.driver === 'player' ? PLAYER_LOOK : v.driver.look; const sh = SPR.personSheet(lk); const ox = v.type === 'kalnoit' ? -6 : v.type === 'atv' ? -2 : v.type === 'bike' ? -1 : -3; g.drawImage(sh.sit, ox - sh.S / 2, -sh.S / 2, sh.S, sh.S); }
+  if (v.type === 'combine' && v.pto) { g.strokeStyle = 'rgba(120,60,20,.85)'; g.lineWidth = 1.6; const off = (G.time * 40) % 5; for (let y = -d.W / 2 + off; y < d.W / 2; y += 5) { g.beginPath(); g.moveTo(d.L / 2 - 13, y); g.lineTo(d.L / 2 - 2, y + 2.5); g.stroke(); } }
+  if (v.type === 'plow' && v.pto) { g.fillStyle = 'rgba(90,60,30,.35)'; g.fillRect(-14, -d.W / 2, 10, d.W); }
+  if (d.rider && v.driver) { const lk = v.driver === 'player' ? PLAYER_LOOK : v.driver.look; const sh = SPR.personSheet(lk); const ox = v.type === 'kalnoit' ? -6 : v.type === 'atv' ? -2 : v.type === 'bike' ? -1 : v.type === 'horse' ? -2 : -3; g.drawImage(sh.sit, ox - sh.S / 2, -sh.S / 2, sh.S, sh.S); }
   if (v.ctrl.thr < 0 && v.vf > 5 && v.driver && !v.dead) { g.fillStyle = 'rgba(255,40,30,.85)'; g.fillRect(-d.L / 2 - 1, -d.W / 2 + 2, 2, 4); g.fillRect(-d.L / 2 - 1, d.W / 2 - 6, 2, 4); }
   if (v.beacon) { const on = Math.floor(G.time * 6) % 2; g.fillStyle = on ? v.beacon : shade(v.beacon, -.5); g.beginPath(); g.arc(-d.L * .15, 0, 3, 0, TAU); g.fill(); }
   g.restore();
@@ -159,6 +176,19 @@ function drawPropFlat(g, o) {
     g.fillStyle = 'rgba(40,30,20,.5)'; g.beginPath(); g.arc(o.x, o.y, (o.r || 6) * .55, 0, TAU); g.fill(); return;
   }
   if (o.h > 20 && o.broken) { if (SPR.TREE[o.t]) drawFallenTree(g, o); return; }
+  if (o.t === 'ygate') { // the yellow gate: posts + two swinging leaves
+    if (o.broken) return;
+    g.save(); g.translate(o.x, o.y); g.rotate(o.ang); const hw = o.hw, swing = o.openK * Math.PI / 2 * .95, L = hw - 1;
+    for (const s of [-1, 1]) {
+      g.fillStyle = '#555'; g.fillRect(s * hw - 2.5, -2.5, 5, 5);
+      // leaf drawn from its hinge toward the centre; when open both leaves fold back along the road
+      g.save(); g.translate(s * hw, 0); g.rotate(s < 0 ? swing : Math.PI - swing);
+      g.fillStyle = '#ffd23f'; g.fillRect(0, -2, L, 4); g.strokeStyle = 'rgba(80,60,10,.8)'; g.lineWidth = .7; g.strokeRect(0, -2, L, 4);
+      g.fillStyle = '#222'; for (let x = 3; x < L - 2; x += 6) g.fillRect(x, -2, 2.5, 4);
+      g.restore();
+    }
+    g.restore(); return;
+  }
   if (o.t === 'tamarisk' && !o.broken) { const s = SPR.tree('tamarisk', Math.floor(o.v * 3)); g.drawImage(s.cv, o.x - s.w / 2, o.y - s.h / 2, s.w, s.h); return; }
   const s = SPR.prop(o);
   g.save(); g.translate(o.x, o.y); if (o.ang) g.rotate(o.ang); g.drawImage(s.cv, -s.w / 2, -s.h / 2, s.w, s.h); g.restore();
@@ -208,8 +238,9 @@ function draw(dt) {
   for (const e of elevated) e._d = -dist2(e.x, e.y, CAM.x, CAM.y) - (e.h || 0) * 30;
   elevated.sort((a, b) => a._d - b._d);
   for (const e of elevated) { if (e.kind !== undefined) drawBuilding(ctx, e, night); else if (!e.broken || FX.falling.length) drawTree(ctx, e, night); }
-  // flying birds above
+  // flying birds and planes above everything
   for (const p of peds) if (p.flying && inView(p.x, p.y, 60)) drawPed(ctx, p);
+  for (const v of vehicles) if (v.alt > .02 && inView(v.x, v.y, 120)) { const [x, y, k] = proj(v.x, v.y, v.alt * 120); const ox = v.x, oy = v.y; v.x = x; v.y = y; drawPlaneBody(ctx, v, k * (1 + v.alt * .15)); v.x = ox; v.y = oy; }
   // smoke & rain splashes
   for (const p of FX.parts) { if (p.k !== 'smoke' || !inView(p.x, p.y, 20)) continue; const a = Math.min(.6, p.life / p.max * .6); ctx.fillStyle = p.col + a + ')'; ctx.beginPath(); ctx.arc(p.x, p.y - p.z, p.sz, 0, TAU); ctx.fill(); }
   if (ENV.rain > .05) rainSplashes(dt);
@@ -256,7 +287,7 @@ function drawGroundMarkers(g) {
     g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(it.x, it.y + 8, 8, 3, 0, 0, TAU); g.fill();
     if (it.t === 'rampage' || it.t === 'egg') { g.fillStyle = it.t === 'egg' ? 'rgba(255,215,0,.25)' : 'rgba(180,90,255,.3)'; g.beginPath(); g.arc(it.x, it.y, 14 + Math.sin(t * 5) * 3, 0, TAU); g.fill(); }
     g.save(); g.translate(it.x, it.y + b); if (it.t === 'rampage') g.rotate(Math.sin(t * 2) * .3); g.drawImage(s.cv, -9, -9, 18, 18); g.restore(); }
-  if (!G.mission) for (const ph of MAP.phones) { if (!inView(ph.x, ph.y, 30)) continue; const s = SPR.icon('phone'); g.fillStyle = rgba(FACT[ph.f].c, .25 + .2 * Math.sin(t * 4)); g.beginPath(); g.arc(ph.x, ph.y, 18, 0, TAU); g.fill(); g.drawImage(s.cv, ph.x - 8, ph.y - 8, 16, 16); }
+  if (!G.mission) for (const ph of MAP.phones) { if (!inView(ph.x, ph.y, 30)) continue; const s = SPR.icon('phone'); g.fillStyle = rgba(phoneFact(ph.f).c, .25 + .2 * Math.sin(t * 4)); g.beginPath(); g.arc(ph.x, ph.y, 18, 0, TAU); g.fill(); g.drawImage(s.cv, ph.x - 8, ph.y - 8, 16, 16); }
   for (const s of MAP.sprays) { if (!inView(s.x, s.y, 50)) continue; g.strokeStyle = 'rgba(255,210,60,.8)'; g.lineWidth = 3; g.setLineDash([10, 8]); g.lineDashOffset = -t * 20; g.beginPath(); g.arc(s.x, s.y, s.r, 0, TAU); g.stroke(); g.setLineDash([]); if (G.sprayProg > 0) { g.strokeStyle = '#9be26b'; g.lineWidth = 5; g.beginPath(); g.arc(s.x, s.y, s.r - 6, -Math.PI / 2, -Math.PI / 2 + G.sprayProg * TAU); g.stroke(); } }
   for (const s of MAP.shops) { if (!inView(s.x, s.y, 20)) continue; g.fillStyle = 'rgba(155,226,107,.25)'; g.beginPath(); g.arc(s.x, s.y, 12 + Math.sin(t * 3) * 2, 0, TAU); g.fill(); g.fillStyle = '#9be26b'; g.font = 'bold 12px Arial'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('₪', s.x, s.y); }
   if (G.mission) for (const mk of G.mission.markers()) { if (!mk) continue; const r = 20 + Math.sin(t * 5) * 3, col = mk.dim ? 'rgba(255,225,74,.35)' : '#ffe14a'; g.strokeStyle = col; g.lineWidth = 3; g.beginPath(); g.arc(mk.x, mk.y, r, 0, TAU); g.stroke(); g.fillStyle = mk.dim ? 'rgba(255,225,74,.08)' : 'rgba(255,225,74,.18)'; g.fill(); }

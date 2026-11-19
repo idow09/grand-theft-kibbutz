@@ -20,7 +20,7 @@ const G = {
     if (Player.out > 0) return false; x = x ?? Player.x; y = y ?? Player.y;
     let seen = false;
     for (const p of peds) {
-      if (p.state === 'ko' || !(p.type === 'elder' || p.type === 'guard' || p.state === 'chase')) continue;
+      if (p.state === 'ko' || !(p.type === 'elder' || p.type === 'guard' || p.type === 'gardener' || p.state === 'chase')) continue;
       if (Math.abs(p.x - x) > 330 || Math.abs(p.y - y) > 330) continue;
       seen = true; if (p.sayL <= 0 && Math.random() < .2) say(p, pick(LINES.elderAngry), 1.7);
     }
@@ -64,7 +64,11 @@ const Player = {
     G.vehToast = { t: v.d.name, life: 2.5 };
     if (v.frenzy && !G.rampage) { v.frenzy = false; Rampage.start('tractor', v); }
     if (G.mission && G.mission.onEnter) G.mission.onEnter(v);
-    G.tip('radio', 'R = החלפת תחנת רדיו · H = צופר · Space = בלם יד');
+    if (v.d.horse) { Audio2.sfx('neigh', v.x, v.y); G.tip('horse', 'סוס! H = צהלה. לא לדהור על הדשא'); }
+    else if (v.type === 'tractor') G.tip('hitch', 'G = וו גרירה (תיסע ברוורס עד העגלה) · T = פרטיקוף');
+    else if (v.type === 'combine') G.tip('pto', 'T = פרטיקוף! הקומביין קוצר כל מה שלפניו');
+    else if (v.d.plane) G.tip('fly', 'גז עד הסוף על המסלול כדי להמריא · F / J = ריסוס · להאט = לנחות');
+    else G.tip('radio', 'R = החלפת תחנת רדיו · H = צופר · Space = בלם יד');
   },
   exit(force) {
     const v = this.veh; if (!v) return;
@@ -226,7 +230,7 @@ function spawnChaser(lvl) {
   for (let t = 0; t < 10; t++) {
     const a = Math.random() * TAU, R = rnd(520, 880), n = nearestNode(P0.x + Math.cos(a) * R, P0.y + Math.sin(a) * R, mask, 400);
     if (!n || !offscreen(n.x, n.y, 30) || dist(n.x, n.y, P0.x, P0.y) < 420) continue;
-    if (kind === 'foot') { const e = mkPed(lvl >= 4 && Math.random() < .5 ? 'guard' : 'elder', n.x, n.y); e.state = 'chase'; e.chaser = true; return; }
+    if (kind === 'foot') { const e = mkPed(lvl >= 4 && Math.random() < .5 ? 'guard' : lvl <= 2 && Math.random() < .5 ? 'gardener' : 'elder', n.x, n.y); e.state = 'chase'; e.chaser = true; if (e.type === 'gardener') say(e, pick(LINES.gardener), 2); return; }
     const v = mkVeh(kind, n.x, n.y, Math.atan2(P0.y - n.y, P0.x - n.x), kind === 'kalnoit' ? pick(['#e8c547', '#d9d9de', '#c0392b']) : kind === 'tractor' ? '#c8352b' : kind === 'pickup' ? '#f2f2f2' : '#f2f2f2');
     const dr = mkPed(kind === 'pickup' ? 'guard' : 'elder', n.x, n.y); dr.veh = v; dr.state = 'drive'; v.driver = dr; v.ai = 'chase'; v.chaser = true;
     v.beacon = kind === 'pickup' ? '#ffd23f' : kind === 'cart' ? '#ff8a1a' : kind === 'tractor' ? '#ff3b3b' : null;
@@ -243,11 +247,11 @@ function wantedTick(dt) {
   if (!near) { G.unseen += dt; if (G.unseen > 3 && G.heat > 0) G.heat = Math.max(0, G.heat - (.3 + .12 * G.level) * dt); }
   else G.unseen = Math.min(G.unseen, 1);
   const lvl = heatLevel();
-  if (lvl > G.level) { G.msg(['', 'סבתא ראתה אותך!', 'הזקנים יוצאים לקלנועיות!', 'ועד הקיבוץ התכנס!', 'הקב"ט בדרך!', 'רכז המשק עלה על הטרקטור!'][lvl], '#ff9b6b'); Audio2.sfx('alert'); }
+  if (lvl > G.level) { G.msg(['', 'הנויניק ראה אותך!', 'זה ייכנס לעלון! הזקנים יוצאים לקלנועיות', 'ועד הקיבוץ התכנס!', 'הקב"ט בדרך!', 'רכז המשק עלה על הטרקטור!'][lvl], '#ff9b6b'); Audio2.sfx('alert'); }
   else if (lvl < G.level && lvl === 0) { G.msg('הוועד שכח ממך... בינתיים', '#9be26b'); releaseChasers(); }
   G.level = lvl;
   if (G.level > 0 && Player.out <= 0) {
-    for (const q of peds) if ((q.type === 'elder' || q.type === 'guard') && (q.state === 'walk' || q.state === 'idle' || q.state === 'flee') && !q.veh && dist(q.x, q.y, P0.x, P0.y) < 330) { q.state = 'chase'; say(q, pick(LINES.elderAngry), 1.6); }
+    for (const q of peds) if ((q.type === 'elder' || q.type === 'guard' || q.type === 'gardener') && (q.state === 'walk' || q.state === 'idle' || q.state === 'flee') && !q.veh && dist(q.x, q.y, P0.x, P0.y) < 330) { q.state = 'chase'; say(q, pick(LINES.elderAngry), 1.6); }
     G.spawnT -= dt;
     const want = [0, 2, 3, 5, 6, 8][G.level]; let cnt = 0;
     for (const q of peds) if (q.state === 'chase') cnt++; for (const v of vehicles) if (v.ai === 'chase') cnt++;
@@ -278,7 +282,7 @@ function faint() {
   if (Player.out > 0) return; Player.out = 3.4; Player.outKind = 'faint'; G.combo = 0;
   if (Player.veh) Player.exit(true);
   const loss = Math.floor(G.money * .12); G.money -= loss;
-  G.bigBanner('התעלפת!', `התעוררת במרפאה. הטיפול עלה ${loss} ₪`, '#ff8a8a'); Audio2.sfx('lose');
+  G.bigBanner('התעלפת!', `התעוררת במרפאה. האחות נתנה אקמול · ${loss} ₪`, '#ff8a8a'); Audio2.sfx('lose');
   Missions.fail('התעלפת באמצע המשימה'); Rampage.stop(false);
 }
 function busted() {
@@ -311,12 +315,13 @@ const Pickups = (() => {
     const sp = (x, y) => { for (let i = 0; i < 30; i++) { const xx = x + R.range(-60, 60), yy = y + R.range(-60, 60); if (!solidAt(xx, yy, 10) && !MINFO[matAt(xx, yy)].water) { eggSpots.push([xx, yy]); return; } } };
     sp(120, 120); sp(6280, 140); sp(150, 4650); sp(6250, 4650);
     const w = MAP.wadiPl; sp(w[Math.floor(w.length * .2)][0], w[Math.floor(w.length * .2)][1]); sp(w[Math.floor(w.length * .8)][0], w[Math.floor(w.length * .8)][1]);
-    for (const n of ['הסילו', 'המאגר', 'פינת החי', 'מגדל המים', 'מגרש הכדורגל', 'השדה הסולארי']) if (POI[n]) sp(POI[n].x + 60, POI[n].y + 40);
+    for (const n of ['הסילו', 'המאגר', 'המשק החי', 'מגדל המים', 'מגרש הכדורגל', 'השדה הסולארי']) if (POI[n]) sp(POI[n].x + 60, POI[n].y + 40);
     eggSpots.forEach((e, i) => add('egg', e[0], e[1], { id: i }));
     // rampage tokens
     const rp = ['החורשה', 'אזור התעשייה', 'שדות', 'ההרחבה', 'הלול', 'בית המשרדים'];
     const rs = [POI['החורשה'], POI['מפעל השימורים'], POI['השדה הסולארי'] || POI['המאגר'], POI['ההרחבה'], POI['הלול'], POI['תחנת הדלק']].filter(Boolean);
     rs.forEach((p, i) => { const q = near(p, 60); add('rampage', q[0], q[1], { id: i, kind: ['balloon', 'toto', 'trample', 'derby', 'chickens', 'trample'][i] }); });
+    if (POI['מנחת המרססים']) { const p = POI['מנחת המרססים']; add('rampage', p.x - 40, p.y + 30, { id: 6, kind: 'spray' }); }
   }
   function tick(dt) {
     const P = Player; if (P.out > 0) return;
@@ -331,14 +336,14 @@ const Pickups = (() => {
       if (dist(t.x, t.y, px, py) > pr + 6) continue;
       if (t.t !== 'rampage' && t.t !== 'egg' && P.veh) continue;
       switch (t.t) {
-        case 'health': if (P.hp >= 100) continue; P.hp = Math.min(100, P.hp + 40); G.msg('פיתה עם חומוס! +40', '#9be26b'); break;
+        case 'health': if (P.hp >= 100) continue; P.hp = Math.min(100, P.hp + 40); G.msg('סיר המעלות מחדר האוכל! +40', '#9be26b'); break;
         case 'armor': P.armor = Math.min(100, P.armor + 50); G.msg('כובע טמבל מחוזק! הגנה +50', '#e6dcb4'); break;
-        case 'toto': P.inv.toto += 12; if (P.wp === 'fist') P.wp = 'toto'; G.msg('אקדח טוטו! +12 קופונים', '#ffb35a'); G.tip('weap', 'Q / Tab = החלפת נשק · J / Ctrl / עכבר = ירי'); break;
+        case 'toto': P.inv.toto += 12; if (P.wp === 'fist') P.wp = 'toto'; G.msg('אקדח טוטו! +12 קופונים', '#ffb35a'); G.tip('weap', 'Q / Tab = החלפת נשק · F / J / עכבר = ירי'); break;
         case 'balloon': P.inv.balloon += 6; if (P.wp === 'fist') P.wp = 'balloon'; G.msg('בלוני מים! +6', '#7fd0ff'); break;
         case 'soaker': P.inv.soaker += 15; if (P.wp === 'fist') P.wp = 'soaker'; G.msg('רובה מים! 15 שניות', '#7fd0ff'); break;
         case 'ext': P.inv.ext += 12; if (P.wp === 'fist') P.wp = 'ext'; G.msg('מטף! 12 שניות של אבקה', '#fff'); break;
-        case 'egg': G.eggs[t.id] = 1; const n = Object.keys(G.eggs).length; G.money += 500; G.bigBanner('ביצת זהב!', `${n}/12 · +500 ₪`, '#ffd84a', 2.5); Audio2.sfx('cash');
-          if (n === 12) { G.money += 5000; G.bigBanner('כל ביצי הזהב!', 'בונוס ענק: 5000 ₪', '#ffd84a'); } Save.save(); break;
+        case 'egg': G.eggs[t.id] = 1; const n = Object.keys(G.eggs).length; G.money += 500; G.bigBanner(`מספר כביסה ${LAUNDRY_NO[t.id % 12]}!`, `${n}/12 הוחזרו לקומונה · +500 ₪`, '#ffd84a', 2.5); Audio2.sfx('cash');
+          if (n === 12) { G.money += 5000; G.bigBanner('כל מספרי הכביסה!', 'הקומונרית בוכה מהתרגשות · 5000 ₪', '#ffd84a'); } Save.save(); break;
         case 'rampage': if (G.rampage || G.mission) continue; Rampage.start(t.kind, null, t.id); break;
       }
       Audio2.sfx('pickup'); t.alive = false; t.respawn = t.t === 'egg' || t.t === 'rampage' ? 0 : 60;
@@ -347,7 +352,15 @@ const Pickups = (() => {
   return { items, coins, coin, add, init, tick };
 })();
 
+const LAUNDRY_NO = [214, 37, 108, 315, 62, 191, 240, 7, 129, 88, 276, 153];
+function disguise() { // the commune swaps your clothes: one level of wanted off
+  const shirts = ['#c0392b', '#2b8a3e', '#7b4aa8', '#e6a817', '#16a085', '#555', '#eee'].filter(c => c !== PLAYER_LOOK.shirt);
+  PLAYER_LOOK.shirt = pick(shirts); PLAYER_LOOK.pants = pick(['#3b4a6b', '#6b5a3a', '#4a4a4a', '#2f3e5a']);
+  if (G.level > 0) { G.heat = Math.max(0, LEVEL_AT[G.level] - .05); if (heatLevel() === 0) resetWanted(); G.msg('בגדים חדשים מהקומונה. מי זה הבחור הזה?', '#9be26b'); }
+  else G.msg('בגדים נקיים מהקומונה. מגוהצים ומקופלים.', '#9be26b');
+}
 const SHOP_ITEMS = {
+  commune: [['החלפת בגדים (מוריד כוכב רוגז)', 40, disguise]],
   food: [['שניצל ופירה', 25, () => Player.hp = Math.min(100, Player.hp + 60)], ['קפה ועוגה', 10, () => Player.hp = Math.min(100, Player.hp + 22)]],
   shop: [['קופוני טוטו ×12', 40, () => { Player.inv.toto += 12; Player.wp = 'toto'; }], ['בלוני מים ×6', 30, () => { Player.inv.balloon += 6; Player.wp = 'balloon'; }], ['כובע טמבל (+50 הגנה)', 35, () => Player.armor = Math.min(100, Player.armor + 50)]],
   kiosk: [['ארטיק', 8, () => Player.hp = Math.min(100, Player.hp + 15)], ['רובה מים (20 ש\')', 60, () => { Player.inv.soaker += 20; Player.wp = 'soaker'; }], ['בלוני מים ×6', 30, () => { Player.inv.balloon += 6; Player.wp = 'balloon'; }]],
@@ -373,9 +386,9 @@ function garageTick(dt) {
 function nearestInteract() {
   const P = Player; if (P.veh || P.out > 0) return null;
   let best = null, bd = 1e9;
-  for (const v of actV) { const d = dist(P.x, P.y, v.x, v.y) - v.d.L / 2; if (d < 22 && d < bd) { bd = d; best = { k: 'veh', v, t: `[E] ${v.d.name}${v.dead ? ' (מקולקל)' : v.driver ? ' — להוציא את הנהג' : ''}` }; } }
+  for (const v of actV) { if (v.d.towed) continue; const d = dist(P.x, P.y, v.x, v.y) - v.d.L / 2; if (d < 22 && d < bd) { bd = d; best = { k: 'veh', v, t: `[E] ${v.d.name}${v.dead ? ' (מקולקל)' : v.driver ? ' — להוציא את הנהג' : ''}` }; } }
   for (const s of MAP.shops) { const d = dist(P.x, P.y, s.x, s.y); if (d < 30 && d < bd + 10) { bd = d; best = { k: 'shop', s, t: s.name }; } }
-  for (const ph of MAP.phones) { const d = dist(P.x, P.y, ph.x, ph.y); if (d < 30 && d < bd + 10) { bd = d; best = { k: 'phone', ph, t: G.mission ? 'יש לך כבר משימה' : `[E] הטלפון של ${FACT[ph.f].n}` }; } }
+  for (const ph of MAP.phones) { const d = dist(P.x, P.y, ph.x, ph.y); if (d < 30 && d < bd + 10) { bd = d; best = { k: 'phone', ph, t: G.mission ? 'יש לך כבר משימה' : ph.f === 'board' ? '[E] לוח סידור העבודה' : `[E] הטלפון של ${phoneFact(ph.f).n}` }; } }
   return best;
 }
 function interactTick() {
@@ -400,12 +413,13 @@ const Rampage = (() => {
     toto: { title: 'טוטו אחד-אחד-איקס!', desc: 'הפל 12 אנשים עם אקדח טוטו תוך 60 שניות', time: 60, need: 12, give: { toto: 60 }, wp: 'toto', reward: 1000 },
     derby: { title: 'דרבי קלנועיות!', desc: 'קלקל 6 רכבים תוך 90 שניות', time: 90, need: 6, reward: 1200 },
     chickens: { title: 'מצעד הלול!', desc: 'הפל 10 אנשים בכל דרך תוך 50 שניות', time: 50, need: 10, reward: 900 },
+    spray: { title: 'ריסוס כללי!', desc: 'קפוץ למטוס ורסס 12 אנשים מהאוויר תוך 100 שניות', time: 100, need: 12, reward: 1500 },
   };
   function start(kind, veh, id) {
     const d = DEF[kind]; let n = 0;
     const R = { kind, id, t: d.time, need: d.need, double: d.double, d, get n() { return n; },
       onDestroy() { if (kind === 'tractor' || kind === 'trample') n++; },
-      onKO(p, how) { if ((kind === 'balloon' && how === 'balloon') || (kind === 'toto' && how === 'toto') || kind === 'chickens') n++; },
+      onKO(p, how) { if ((kind === 'balloon' && how === 'balloon') || (kind === 'toto' && how === 'toto') || (kind === 'spray' && how === 'spray') || kind === 'chickens') n++; },
       tickVeh() { if (kind !== 'derby') return; let c = 0; for (const v of vehicles) if (v.dead && !v._counted && dist(v.x, v.y, Player.x, Player.y) < 900) { v._counted = 1; c++; } n += c; },
     };
     if (d.give) for (const k in d.give) Player.inv[k] += d.give[k]; if (d.wp) Player.wp = d.wp;
@@ -436,7 +450,7 @@ function playerTick(dt) {
   if (pl.out > 0) { pl.out -= dt; if (pl.out <= 0) respawnPlayer(); return; }
   if (pl.flash > 0) pl.flash -= dt; if (pl.punch > 0) pl.punch -= dt; if (pl.cd > 0) pl.cd -= dt; if (pl.throwT > 0) pl.throwT -= dt; if (pl.stumble > 0) pl.stumble -= dt;
   if (P('KeyQ', 'Tab')) cycleWeapon(K('ShiftLeft', 'ShiftRight') ? -1 : 1);
-  const att = K('KeyJ', 'ControlLeft', 'ControlRight') || mouseDown || TOUCH.att;
+  const att = K('KeyJ', 'KeyF') || (!IS_MAC && K('ControlLeft', 'ControlRight')) || mouseDown || TOUCH.att;
   if (pl.veh) {
     const v = pl.veh, c = v.ctrl;
     c.thr = (K('KeyW', 'ArrowUp') ? 1 : 0) - (K('KeyS', 'ArrowDown') ? 1 : 0);
@@ -448,16 +462,19 @@ function playerTick(dt) {
       for (const q of peds) if (q.type === 'chicken' && dist(q.x, q.y, v.x, v.y) < 140) { q.state = 'flee'; q.timer = 2; }
     }
     // drive-by with toto / soaker, firing forward
-    if (att && pl.cd <= 0 && (pl.wp === 'toto' || pl.wp === 'soaker' || pl.wp === 'ext')) { const r = Combat.fireFrom(v.x + Math.cos(v.a) * v.d.L / 2, v.y + Math.sin(v.a) * v.d.L / 2, v.a, v); if (r === 'stream') Combat.stream(dt, v.x + Math.cos(v.a) * v.d.L / 2, v.y + Math.sin(v.a) * v.d.L / 2, v.a, pl.wp); }
-    if (P('KeyE', 'Enter')) pl.exit();
+    if (!v.d.plane && att && pl.cd <= 0 && (pl.wp === 'toto' || pl.wp === 'soaker' || pl.wp === 'ext')) { const r = Combat.fireFrom(v.x + Math.cos(v.a) * v.d.L / 2, v.y + Math.sin(v.a) * v.d.L / 2, v.a, v); if (r === 'stream') Combat.stream(dt, v.x + Math.cos(v.a) * v.d.L / 2, v.y + Math.sin(v.a) * v.d.L / 2, v.a, pl.wp); }
+    if (P('KeyE', 'Enter')) { if (v.alt > .02) G.msg('אין מצנח! קודם לנחות', '#ffb36b'); else pl.exit(); }
+    if (P('KeyG')) Farm.hitchKey(v);
+    if (P('KeyT')) Farm.ptoKey(v);
     pl.x = v.x; pl.y = v.y; pl.a = v.a;
     const sp = Math.hypot(v.vx, v.vy);
-    Audio2.setEngine(v.dead ? 'none' : v.d.eng, clamp(sp / v.d.maxF, 0, 1) * (c.thr ? 1 : .7));
+    Audio2.setEngine(v.dead ? 'none' : v.d.eng, clamp(sp / v.d.maxF, 0, 1) * (c.thr ? 1 : .7) + (v.pto ? .35 : 0));
+    v.sprayOn = !!(v.d.plane && att && v.alt > .3);
     // lawn offence
-    const m = matAt(v.x, v.y);
-    if (MINFO[m].lawn && sp > 20) { if (G.crime(.32 * dt * (v.d.mass > 15 ? 1.8 : 1))) G.tip('lawn', 'אסור לנסוע על הדשא — הזקנים רואים הכל!'); }
+    const m = matAt(v.x, v.y), air = v.alt > .05;
+    if (!air && MINFO[m].lawn && sp > 20) { if (G.crime(.32 * dt * (v.d.mass > 15 ? 1.8 : 1))) G.tip('lawn', v.d.horse ? 'סוס על הדשא?! הנויניק יקבל התקף לב' : 'אסור לנסוע על הדשא — הזקנים רואים הכל!'); }
     // crops & mud
-    if ((MINFO[m].crop || MINFO[m].lawn) && sp > 25) trample(v);
+    if (!air && !v.d.horse && (MINFO[m].crop || MINFO[m].lawn) && sp > 25) trample(v);
     if (P('KeyR')) { if (!v.d.radio) G.msg('אין רדיו ב' + v.d.name, '#ccc'); else { Audio2.setStation(Audio2.stationIndex + 1); G.radioCard = 3; } }
   } else {
     let mx = (K('KeyD', 'ArrowRight') ? 1 : 0) - (K('KeyA', 'ArrowLeft') ? 1 : 0), my = (K('KeyS', 'ArrowDown') ? 1 : 0) - (K('KeyW', 'ArrowUp') ? 1 : 0);

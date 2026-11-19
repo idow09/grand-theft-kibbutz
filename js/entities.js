@@ -15,9 +15,13 @@ const VT = {
   forklift:  { name: 'מלגזה', maxF: 120, acc: 180, brake: 400, turn: 2.7, grip: 10, mass: 7, hp: 220, power: 2, off: .2, eng: 'electric', radio: 0, rider: 0, horn: 'beep', lights: 1 },
   tractor:   { name: 'טרקטור', maxF: 178, acc: 150, brake: 320, turn: 1.6, grip: 12, mass: 22, hp: 520, power: 4, off: 1, eng: 'diesel', radio: 1, rider: 0, horn: 'hornBig', lights: 1 },
   combine:   { name: 'קומביין', maxF: 125, acc: 95, brake: 260, turn: 1.15, grip: 14, mass: 40, hp: 900, power: 5, off: 1, eng: 'diesel', radio: 1, rider: 0, horn: 'hornBig', lights: 1 },
+  horse:     { name: 'סוס', maxF: 255, acc: 330, brake: 480, turn: 3.1, grip: 10, mass: 5, hp: 9999, power: 0, off: .92, eng: 'none', radio: 0, rider: 1, horn: 'neigh', lights: 0, horse: 1 },
+  plane:     { name: 'מטוס ריסוס', maxF: 440, acc: 150, brake: 220, turn: 1.25, grip: 12, mass: 12, hp: 320, power: 3, off: .35, eng: 'plane', radio: 1, rider: 0, horn: 'horn', lights: 1, plane: 1, CW: 22 },
+  trailer:   { name: 'עגלה', maxF: 400, acc: 0, brake: 0, turn: 0, grip: 12, mass: 9, hp: 700, power: 3, off: 1, eng: 'none', radio: 0, rider: 0, horn: 'horn', lights: 0, towed: 1 },
+  plow:      { name: 'מחרשה', maxF: 400, acc: 0, brake: 0, turn: 0, grip: 12, mass: 6, hp: 700, power: 4, off: 1, eng: 'none', radio: 0, rider: 0, horn: 'horn', lights: 0, towed: 1, CW: 24 },
 };
-for (const k in VT) { const [L, W] = SPR.VSIZE[k]; const d = VT[k]; d.L = L; d.W = W; d.n = Math.max(2, Math.round(L / W)); d.type = k; }
-const KCOLS = { car: ['#c0392b', '#2c6fb5', '#f2f2f2', '#2b2b2b', '#8e9aa4', '#3d8a52', '#d9b44a', '#7b4aa8'], van: ['#f2f2f2', '#d9d9d9', '#2c6fb5', '#b5452e'], pickup: ['#f2f2f2', '#3a7a4a', '#8a2a22', '#c8b48a', '#2c3e50'], kalnoit: ['#d9d9de', '#e8c547', '#c0392b', '#3b82c4', '#4aa86a', '#c58bd6'], cart: ['#f2f2f2', '#2f8a56'], scooter: ['#ff5a3a', '#2a6ab8', '#ffd23f', '#222'], bike: ['#c0392b', '#2a6ab8', '#ffd23f', '#3d8a52', '#222', '#ff7ab8'], atv: ['#c0392b', '#3d8a52', '#2a6ab8'], tractor: ['#2f8f3a', '#c8352b', '#2f6fc8'], combine: ['#3a8a3a', '#c8352b'], forklift: ['#f0b52a'], milktruck: ['#f2f2f2'] };
+for (const k in VT) { const [L, W] = SPR.VSIZE[k]; const d = VT[k]; d.L = L; d.W = W; d.n = Math.max(2, Math.round(L / (d.CW || W))); d.type = k; }
+const KCOLS = { horse: ['#7a4a24', '#3a2a1e', '#c9a56a', '#e8e2d6', '#9a5a32'], plane: ['#f2c230'], trailer: ['#b5452e', '#2f6fc8', '#3d8a52'], plow: ['#c8352b', '#2f6fc8'], car: ['#c0392b', '#2c6fb5', '#f2f2f2', '#2b2b2b', '#8e9aa4', '#3d8a52', '#d9b44a', '#7b4aa8'], van: ['#f2f2f2', '#d9d9d9', '#2c6fb5', '#b5452e'], pickup: ['#f2f2f2', '#3a7a4a', '#8a2a22', '#c8b48a', '#2c3e50'], kalnoit: ['#d9d9de', '#e8c547', '#c0392b', '#3b82c4', '#4aa86a', '#c58bd6'], cart: ['#f2f2f2', '#2f8a56'], scooter: ['#ff5a3a', '#2a6ab8', '#ffd23f', '#222'], bike: ['#c0392b', '#2a6ab8', '#ffd23f', '#3d8a52', '#222', '#ff7ab8'], atv: ['#c0392b', '#3d8a52', '#2a6ab8'], tractor: ['#2f8f3a', '#c8352b', '#2f6fc8'], combine: ['#3a8a3a', '#c8352b'], forklift: ['#f0b52a'], milktruck: ['#f2f2f2'] };
 
 const vehicles = [], peds = [];
 let actV = [];
@@ -36,6 +40,7 @@ function makeLook(type, r) {
     case 'volunteer': L.hair = P(['#e6c76a', '#d8b45a', '#b5482a', '#f0d890']); L.skin = P(['#f6dcc4', '#f3d2b0']); L.shirt = P(['#f1948a', '#85c1e9', '#f7dc6f', '#fff']); L.extra = r() < .6 ? 'backpack' : null; break;
     case 'worker': L.shirt = P(['#2f5f9a', '#3d6b3a', '#7a5a3a']); L.pants = P(['#2f3e5a', '#4a4a3a']); L.hat = r() < .5 ? 'cap' : 'tembel'; L.capCol = '#2a4a2a'; L.shoes = '#2a1a0a'; break;
     case 'cook': L.shirt = '#f4f4f4'; L.extra = 'apron'; L.hat = 'scarf'; L.scarfCol = '#fff'; break;
+    case 'gardener': L.shirt = P(['#4f7a3a', '#5e8a44', '#3f6a30']); L.pants = '#5a4a32'; L.hat = 'sunhat'; L.shoes = '#3a2a1a'; L.extra = 'cane'; break;
     case 'guard': L.shirt = '#7a7a4a'; L.pants = '#4a4a3a'; L.hat = 'cap'; L.capCol = '#333'; break;
     default: if (r() < .16) L.hat = 'tembel'; else if (r() < .14) { L.hat = 'cap'; L.capCol = P(['#2a6ab8', '#c0392b', '#2a4a2a', '#eee']); } if (r() < .08) L.extra = 'bag';
   }
@@ -44,7 +49,7 @@ function makeLook(type, r) {
 const LOOKS = {};
 function initLooks() {
   const r = RNG(99);
-  for (const [t, n] of [['adult', 14], ['kid', 8], ['teen', 6], ['elder', 10], ['volunteer', 4], ['worker', 5], ['cook', 2], ['guard', 2]]) { LOOKS[t] = []; for (let i = 0; i < n; i++) LOOKS[t].push(makeLook(t, r)); }
+  for (const [t, n] of [['adult', 14], ['kid', 8], ['teen', 6], ['elder', 10], ['volunteer', 4], ['worker', 5], ['cook', 2], ['guard', 2], ['gardener', 3]]) { LOOKS[t] = []; for (let i = 0; i < n; i++) LOOKS[t].push(makeLook(t, r)); }
 }
 const PLAYER_LOOK = { age: 'adult', skin: '#f1c9a0', hair: '#3a2a1a', hs: 'short', hat: 'tembel', shirt: '#2f6fd0', pants: '#8a6a3a', shoes: '#6b4a2a', extra: null };
 
@@ -74,14 +79,17 @@ function say(e, t, life) { if (!e || e === 'player') return; e.sayT = t; e.sayL 
 /* ---------------- vehicle physics ---------------- */
 function vehCircles(v) {
   const d = v.d, n = d.n;
-  if (!v._cs) { v._cs = []; for (let i = 0; i < n; i++) v._cs.push({ x: 0, y: 0, r: d.W / 2 }); }
-  const c = Math.cos(v.a), s = Math.sin(v.a), half = d.L / 2 - d.W / 2;
+  const cw = d.CW || d.W;
+  if (!v._cs) { v._cs = []; for (let i = 0; i < n; i++) v._cs.push({ x: 0, y: 0, r: cw / 2 }); }
+  const c = Math.cos(v.a), s = Math.sin(v.a), half = Math.max(0, d.L / 2 - cw / 2);
   for (let i = 0; i < n; i++) { const o = -half + 2 * half * i / (n - 1); v._cs[i].x = v.x + c * o; v._cs[i].y = v.y + s * o; }
   return v._cs;
 }
 const NOCTRL = { thr: 0, steer: 0, hb: false };
 function vehPhysics(v, dt) {
   const d = v.d; let ctrl = v.ctrl;
+  if (v.towedBy) return;                         // positioned by Farm.towTick
+  if (d.plane) { Farm.planePhysics(v, dt); return; }
   if (v.dead || v.stun > 0 || (!v.driver)) ctrl = NOCTRL;
   const m = MINFO[matAt(v.x, v.y)];
   const drag = lerp(m.drag, 1, d.off), grip = d.grip * lerp(m.grip, 1, d.off * .8) * (ENV.wet ? .72 : 1);
@@ -127,7 +135,7 @@ function impact(v, sp) {
   if (sp < 55) return;
   if (sp > 80) v.hp -= (sp - 80) * .09 * (v.d.hp > 400 ? .3 : 1);
   Audio2.sfx(sp > 120 ? 'crash' : 'thud', v.x, v.y);
-  if (v.driver === 'player') { G.shake = Math.min(9, G.shake + sp / 40); if (v.d.type === 'bike' || v.d.type === 'scooter') { if (sp > 150) { Player.fallOff(sp); } } }
+  if (v.driver === 'player') { G.shake = Math.min(9, G.shake + sp / 40); if (v.d.type === 'bike' || v.d.type === 'scooter' || v.d.horse) { if (sp > (v.d.horse ? 175 : 150)) { if (v.d.horse) Audio2.sfx('neigh', v.x, v.y); Player.fallOff(sp); } } }
   if (v.hp <= 0) killVeh(v);
 }
 const _q1 = [], _q2 = [];
@@ -138,7 +146,7 @@ function vehStatic(v) {
     for (const b of _q1) { if (b.roofOnly) continue; const k = shapePush(b, c.x, c.y, c.r); if (k) { v.x += k.nx * k.pen; v.y += k.ny * k.pen; c.x += k.nx * k.pen; c.y += k.ny * k.pen; nxs += k.nx; nys += k.ny; } }
     pgrid.query(c.x - c.r - 4, c.y - c.r - 4, c.x + c.r + 4, c.y + c.r + 4, _q2);
     for (const o of _q2) {
-      if (o.broken) continue; const k = shapePush(o, c.x, c.y, c.r); if (!k) continue;
+      if (o.broken || o.open) continue; const k = shapePush(o, c.x, c.y, c.r); if (!k) continue;
       if (o.need <= v.d.power && sp > (o.t === 'fence' || o.t === 'cfence' ? 45 : 18)) breakProp(o, v, sp);
       else if (o.solid) { v.x += k.nx * k.pen; v.y += k.ny * k.pen; c.x += k.nx * k.pen; c.y += k.ny * k.pen; nxs += k.nx; nys += k.ny; }
     }
@@ -147,7 +155,8 @@ function vehStatic(v) {
   if (nxs || nys) { const n = Math.hypot(nxs, nys) || 1, nx = nxs / n, ny = nys / n, vn = v.vx * nx + v.vy * ny; if (vn < 0) { v.vx -= vn * nx * 1.3; v.vy -= vn * ny * 1.3; impact(v, -vn); } }
 }
 function breakProp(o, v, sp) {
-  if (o.broken || o.need > 8) return; o.broken = true;
+  if (o.broken || o.need > 8) return; o.broken = true; o.solid = false;
+  if (o.pen) Farm.penBroken(o);
   const d = PT[o.t];
   FX.burst(o.x, o.y, d.burst || ['#888'], o.t === 'greenhouse' ? 34 : o.h > 20 ? 18 : 10, 110, o.t === 'greenhouse' ? 5 : 4);
   Audio2.sfx(d.snd || 'break', o.x, o.y);
@@ -160,6 +169,7 @@ function breakProp(o, v, sp) {
 function vehVsVeh(list) {
   for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
     const a = list[i], b = list[j]; if (Math.abs(a.x - b.x) > 90 || Math.abs(a.y - b.y) > 90) continue;
+    if (a.hitch === b || b.hitch === a || a.alt > .05 || b.alt > .05) continue;
     if (dist(a.x, a.y, b.x, b.y) > (a.d.L + b.d.L) / 2 + 6) continue;
     const ca = vehCircles(a), cb = vehCircles(b); let done = false;
     for (const x of ca) { if (done) break; for (const y of cb) {
@@ -232,8 +242,9 @@ function aiChase(v, dt, tx, ty) {
 
 /* ---------------- AI: people & animals ---------------- */
 const LINES = {
-  elderAngry: ['בושה!', 'תרד מהדשא!', 'בזמני לא היה ככה!', 'מי אישר את זה?', 'אני מדבר עם המזכיר!', 'נו באמת!', 'חוצפה!', 'זה לא תקין!', 'האסיפה תשמע על זה!'],
-  elderMumble: ['הדשא היה ירוק יותר פעם', 'אין כבוד לוועד', 'איפה הנוער של היום', 'בחדר האוכל נגמרו הגזרים', 'פעם היינו קוטפים כותנה ידנית', 'מי שם פה את הקלנועית?', 'ביום שישי יש שירה בציבור'],
+  elderAngry: ['בושה!', 'תרד מהדשא!', 'תרד מהדשא! הנויניק השקיע!', 'בזמני לא היה ככה!', 'בזמני היו מעיפים על זה מהחברות', 'מי אישר את זה?', 'אני מדבר עם המזכיר!', 'חוצפה!', 'זה לא תקין!', 'זה יעלה באסיפה!', 'אני כותב לעלון!', 'אתה בכלל תושב, אין לך זכות הצבעה!'],
+  elderMumble: ['הדשא היה ירוק יותר פעם', 'אין כבוד לוועד', 'איפה הנוער של היום', 'בחדר האוכל נגמרו הגזרים', 'פעם היינו קוטפים כותנה ידנית', 'מי שם פה את הקלנועית?', 'ביום שישי יש שירה בציבור', 'הקומקום החשמלי, ככה זה התחיל', 'שמעתי שמפריטים את הכביסה'],
+  gardener: ['תרד מהדשא! השקעתי בו!', 'זה דשא, לא כביש!', 'אני מתקשר לסידור עבודה!', 'מי דרך לי על הערוגה?!'],
   kid: ['תפוס אותי!', 'איפה הכדור?', 'אמא!', 'יש לי חופש!', 'טוטו!'],
   teen: ['אחי...', 'מה קורה?', 'יש מסיבה במקלט', 'יש לך סיגריה... סתם?', 'אין פה קליטה'],
   volunteer: ['Shalom!', 'Where is the dining hall?', 'Sababa!', 'Is this the kibbutz?', 'I love falafel!'],
@@ -296,8 +307,11 @@ function animalAI(p, dt, d2p) {
   let mx = 0, my = 0, spd = p.spd;
   const near = Player.veh ? 110 : 70;
   switch (p.state) {
-    case 'graze': p.timer -= dt; if (p.timer <= 0) { p.state = 'roam'; p.timer = rnd(1, 3); p.fx = rnd(-1, 1); p.fy = rnd(-1, 1); if (t === 'cow' && Math.random() < .25) Audio2.sfx('moo', p.x, p.y); if (t === 'peacock' && Math.random() < .3) { p.display = 3; } } if (p.display > 0) p.display -= dt; break;
-    case 'roam': p.timer -= dt; mx = p.fx; my = p.fy; if (p.timer <= 0) { p.state = 'graze'; p.timer = rnd(2, 6); }
+    case 'graze': p.timer -= dt; if (p.timer <= 0) { p.state = 'roam'; p.timer = p.free ? rnd(3, 8) : rnd(1, 3); p.fx = rnd(-1, 1); p.fy = rnd(-1, 1); if (t === 'cow' && Math.random() < .25) Audio2.sfx('moo', p.x, p.y); if (t === 'peacock' && Math.random() < .3) { p.display = 3; } } if (p.display > 0) p.display -= dt; break;
+    case 'escape': { p.timer -= dt; if (p.timer <= 0) p.hole = p.hole2 = null; const tg = p.hole || p.hole2 || { x: p.tx, y: p.ty }, dx = tg.x - p.x, dy = tg.y - p.y, l = Math.hypot(dx, dy) || 1; mx = dx / l; my = dy / l; spd = p.hole ? 30 : 42;
+      if (p.hole && l < 16) p.hole = null; else if (!p.hole && p.hole2 && l < 18) p.hole2 = null;
+      else if (!p.hole && !p.hole2 && (l < 25 || p.timer <= 0)) { p.state = 'roam'; p.timer = rnd(3, 7); p.fx = mx + rnd(-.6, .6); p.fy = my + rnd(-.6, .6); } break; }
+    case 'roam': p.timer -= dt; mx = p.fx; my = p.fy; if (p.free) spd = 24; if (p.timer <= 0) { p.state = 'graze'; p.timer = p.free ? rnd(1.5, 4) : rnd(2, 6); }
       if (p.pen && !pointInPoly(p.x + mx * 20, p.y + my * 20, p.pen)) { p.fx = -p.fx; p.fy = -p.fy; }
       if (p.zone && dist(p.x, p.y, p.zone.x, p.zone.y) > p.zone.r) { p.fx = p.zone.x - p.x; p.fy = p.zone.y - p.y; const l = Math.hypot(p.fx, p.fy); p.fx /= l; p.fy /= l; } break;
     case 'wander': p.timer -= dt; if (p.timer <= 0) { p.timer = rnd(.6, 2.5); p.fx = Math.random() < .3 ? 0 : rnd(-1, 1); p.fy = rnd(-1, 1); } mx = p.fx; my = p.fy; spd = t === 'chicken' ? 24 : t === 'dog' ? 36 : 28;
@@ -320,11 +334,11 @@ function animalAI(p, dt, d2p) {
 /* ---------------- population management ---------------- */
 const POP = { t: 0 };
 function districtDensity(dname) {
-  if (/קיבוץ|שכונת|הבריכה/.test(dname)) return { peds: 30, cars: 8 };
+  if (/קיבוץ|שכונת|שיכון|הבריכה/.test(dname)) return { peds: 30, cars: 8 };
   if (/ההרחבה/.test(dname)) return { peds: 16, cars: 6 };
   if (/המשק/.test(dname)) return { peds: 10, cars: 4 };
   if (/התעשייה/.test(dname)) return { peds: 12, cars: 6 };
-  if (/צומת|כביש/.test(dname)) return { peds: 6, cars: 9 };
+  if (/צומת|כביש|הסיבוב/.test(dname)) return { peds: 6, cars: 9 };
   return { peds: 3, cars: 4 };
 }
 function pedTypeFor(x, y) {
@@ -332,7 +346,7 @@ function pedTypeFor(x, y) {
   if (/המשק/.test(d)) return r < .7 ? 'worker' : r < .85 ? 'adult' : 'elder';
   if (/התעשייה/.test(d)) return r < .5 ? 'worker' : 'adult';
   if (/לב הקיבוץ/.test(d) && r < .1) return 'cook';
-  if (/קיבוץ|שכונת|הבריכה|ההרחבה|לב/.test(d)) return r < .32 ? 'adult' : r < .55 ? 'kid' : r < .82 ? 'elder' : r < .93 ? 'teen' : 'volunteer';
+  if (/קיבוץ|שכונת|שיכון|הבריכה|ההרחבה|לב/.test(d)) return r < .32 ? 'adult' : r < .55 ? 'kid' : r < .8 ? 'elder' : r < .91 ? 'teen' : r < .96 ? 'volunteer' : 'gardener';
   return r < .6 ? 'worker' : r < .85 ? 'adult' : 'volunteer';
 }
 function vehTypeFor(kind) {
@@ -400,14 +414,15 @@ function entitiesTick(dt) {
       else if (v.ai === 'chase' || v.ai === 'angry') { aiChase(v, dt, Player.veh ? Player.veh.x : Player.x, Player.veh ? Player.veh.y : Player.y); if (v.ai === 'angry' && (Math.random() < dt * .1 || dist(v.x, v.y, Player.x, Player.y) > 600)) v.ai = 'release'; }
     }
     vehPhysics(v, dt);
-    vehStatic(v);
+    if (!v.towedBy && !(v.alt > .05)) vehStatic(v);
+    if (v.d.horse) { const sp = Math.hypot(v.vx, v.vy), g0 = Math.floor(v.gait || 0); v.gait = (v.gait || 0) + sp * dt * .085; if (sp > 25 && Math.floor(v.gait) !== g0 && Math.floor(v.gait) % 2 === 0) Audio2.sfx('clop', v.x, v.y); }
     if (v.dead && Math.random() < .25) FX.smoke(v.x + rnd(-6, 6), v.y + rnd(-6, 6));
     else if (v.hp < v.d.hp * .3 && Math.random() < .12) FX.smoke(v.x + Math.cos(v.a) * v.d.L * .35, v.y + Math.sin(v.a) * v.d.L * .35);
   }
   vehVsVeh(actV);
   // vehicles vs people
   for (const v of actV) {
-    const sp = Math.hypot(v.vx, v.vy); if (sp < 4) continue;
+    const sp = Math.hypot(v.vx, v.vy); if (sp < 4 || v.alt > .05) continue;
     const cs = vehCircles(v);
     for (const p of peds) {
       if (p.veh || p.flying || Math.abs(p.x - v.x) > 70 || Math.abs(p.y - v.y) > 70) continue;
