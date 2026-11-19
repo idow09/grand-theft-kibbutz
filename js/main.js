@@ -30,6 +30,10 @@ function drawLoading() {
 }
 function newGame() {
   Save.wipe();
+  // after any play the world itself is dirty (broken props, ploughed fields, loose cows, chasers):
+  // rebuild it from scratch by reloading straight into a fresh game
+  if (G.played) { try { sessionStorage.setItem('gtk-fresh', '1'); } catch (e) { } G.state = 'reloading'; location.reload(); return; }
+  G.played = true;
   Object.assign(G, { money: 60, heat: 0, level: 0, respect: { cow: 0, youth: 0, kitchen: 0 }, done: {}, eggs: {}, rampDone: {}, tips: {}, mission: null, rampage: null, combo: 0 });
   Player.inv = { fist: 1, toto: 0, soaker: 0, balloon: 0, ext: 0 }; Player.wp = 'fist'; Player.hp = 100; Player.armor = 0; Player.out = 0;
   if (Player.veh) Player.exit(true);
@@ -38,7 +42,7 @@ function newGame() {
   const p = POI['חדר האוכל']; Player.x = p.x + 20; Player.y = p.y + 40; CAM.x = Player.x; CAM.y = Player.y;
   startPlay(true);
 }
-function continueGame() { Save.load(); const p = POI['חדר האוכל']; Player.x = p.x + 20; Player.y = p.y + 40; CAM.x = Player.x; CAM.y = Player.y; startPlay(false); }
+function continueGame() { G.played = true; Save.load(); const p = POI['חדר האוכל']; Player.x = p.x + 20; Player.y = p.y + 40; CAM.x = Player.x; CAM.y = Player.y; startPlay(false); }
 const INTRO_TIPS = [[1.5, 'WASD / חיצים לתנועה · Shift לריצה'], [6, 'לחץ E ליד האופניים כדי לעלות עליהם'], [12, 'טלפונים צבעוניים = משימות · M = מפה'], [19, 'בשדות שמחוץ לקיבוץ מחכים טרקטורים... 🚜'], [27, 'זהירות מהדשא — הזקנים רואים הכל']];
 let introT = -1;
 function startPlay(fresh) {
@@ -88,7 +92,10 @@ function frame(now) {
     if (G.state === 'loading') {
       drawLoading();
       if (bootI < BOOT.length) { BOOT[bootI][1](); bootI++; }
-      else { G.state = 'title'; MENU.mode = 'title'; MENU.sel = 0; setWeather('clear', true); ENV.time = 17.6; }
+      else {
+        let fresh = false; try { fresh = sessionStorage.getItem('gtk-fresh') === '1'; sessionStorage.removeItem('gtk-fresh'); } catch (e) { }
+        if (fresh) newGame(); else { G.state = 'title'; MENU.mode = 'title'; MENU.sel = 0; setWeather('clear', true); ENV.time = 17.6; }
+      }
     } else if (G.state === 'title') {
       titleTick(dt); draw(dt); drawMenu();
       const r = menuInput();

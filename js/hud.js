@@ -73,6 +73,8 @@ function drawHUD(dt) {
   if (G.radioCard > 0 && Player.veh) { const st = Audio2.station; ctx.globalAlpha = Math.min(1, G.radioCard); panel(VW / 2 - 160, VH - 120, 320, 54, .7, 12); T('📻 ' + st.name, VW / 2, VH - 102, 18, st.col, 'center'); T(st.tag, VW / 2, VH - 80, 12, '#ccc', 'center', { stroke: false, w: 500 }); ctx.globalAlpha = 1; }
   // ---- talk radio subtitles ----
   const sub = Player.veh && Audio2.subtitle; if (sub) { const lines = wrap(sub, Math.min(600, VW - 60), 15); const h = lines.length * 20 + 14; panel(VW / 2 - Math.min(320, VW / 2 - 20), VH - 170 - h, Math.min(640, VW - 40), h, .6, 8); lines.forEach((l, i) => T(l, VW / 2, VH - 170 - h + 17 + i * 20, 15, '#9fd8ff', 'center', { w: 500, stroke: false })); }
+  // ---- harvest counter (combine with the PTO on) ----
+  if (G.harvestT > 0) { ctx.globalAlpha = Math.min(1, G.harvestT); panel(VW / 2 - 90, VH - (TOUCH.on ? 96 : 150), 180, 34, .6, 10); T(`קציר: ${(G.harvest || 0).toFixed(1)} טון`, VW / 2, VH - (TOUCH.on ? 79 : 133), 17, '#ffd36a', 'center'); ctx.globalAlpha = 1; }
   // ---- vehicle toast ----
   if (G.vehToast) { ctx.globalAlpha = Math.min(1, G.vehToast.life); T(G.vehToast.t, VW / 2, VH * .72, 26, '#fff', 'center'); ctx.globalAlpha = 1; }
   // ---- banner ----
@@ -183,18 +185,16 @@ function drawMenu() {
   if (title) T(TOUCH.on ? 'v2 · נגיעה לבחירה' : 'v2 · חיצים + Enter · או עכבר', VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
 }
 function drawCredits() {
-  const w = Math.min(600, VW - 32), x = VW / 2 - w / 2, short = VH < 560, y = short ? 10 : VH * .1;
-  const bio = 'קיבוצניק (כמעט) מלידה, אבל עד היום מרגיש סוג ב׳, כי ההורים היו תושבים, אז שילמתי על שירותים וכלליות בחדר האוכל. היום חבר קיבוץ גאה ואבא לשלוש קיבוצניקיות קטנות שנולדו פה, בקיבוץ סעד.';
-  const lines = wrap(bio, w - 56, short ? 14 : 16), lh = short ? 19 : 23;
-  const h = (short ? 150 : 210) + lines.length * lh;
+  const w = Math.min(600, VW - 32), x = VW / 2 - w / 2, short = VH < 560, y = short ? 14 : VH * .14;
+  const bio = 'עדו וייס, קיבוצניק (כמעט) מלידה, אבל עד היום מרגיש סוג ב׳, כי ההורים היו תושבים, אז שילמתי על שירותים וכלליות בחדר האוכל. היום חבר קיבוץ גאה ואבא לשלוש קיבוצניקיות קטנות שנולדו פה, בקיבוץ סעד.';
+  const lines = wrap(bio, w - 56, short ? 15 : 17), lh = short ? 21 : 26;
+  const h = (short ? 116 : 150) + lines.length * lh;
   panel(x, y, w, h, .86, 16);
-  T('קרדיטים', VW / 2, y + (short ? 24 : 34), short ? 20 : 26, '#ffd84a', 'center');
-  T('GRAND THEFT KIBBUTZ', VW / 2, y + (short ? 50 : 70), short ? 15 : 18, '#9be26b', 'center', { dir: 'ltr', w: 800 });
-  let yy = y + (short ? 80 : 112);
-  T('רעיון, הפקה ובדיקות שטח: עדו וייס', VW / 2, yy, short ? 16 : 19, '#fff', 'center'); yy += short ? 24 : 32;
-  for (const l of lines) { T(l, VW / 2, yy, short ? 14 : 16, '#d8e2ea', 'center', { w: 500, stroke: false }); yy += lh; }
-  yy += short ? 6 : 12; T('idow09@gmail.com', VW / 2, yy, short ? 14 : 16, '#9fd8ff', 'center', { dir: 'ltr', w: 600, stroke: false });
-  yy += short ? 22 : 30; T('קוד, גרפיקה וסאונד: Claude (Anthropic). הכל נוצר בקוד, בלי קבצים חיצוניים', VW / 2, yy, short ? 11 : 13, '#8a96a0', 'center', { w: 500, stroke: false });
+  T('GRAND THEFT KIBBUTZ', VW / 2, y + (short ? 26 : 36), short ? 17 : 21, '#9be26b', 'center', { dir: 'ltr', w: 800 });
+  let yy = y + (short ? 58 : 76);
+  for (const l of lines) { T(l, VW / 2, yy, short ? 15 : 17, '#eef3f6', 'center', { w: 500, stroke: false }); yy += lh; }
+  yy += short ? 6 : 10; T('idow09@gmail.com', VW / 2, yy, short ? 14 : 16, '#9fd8ff', 'center', { dir: 'ltr', w: 600, stroke: false });
+  yy += short ? 24 : 32; T('קוד, גרפיקה וסאונד: Claude (Anthropic)', VW / 2, yy, short ? 12 : 13, '#8a96a0', 'center', { w: 500, stroke: false });
 }
 function drawControls() {
   const L = TOUCH.on ? [

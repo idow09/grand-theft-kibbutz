@@ -5,7 +5,7 @@
    ================================================================ */
 const Audio2 = (() => {
   let ac = null, master, sfxBus, musicBus, ambBus, noiseBuf, distCurve;
-  const vol = { master: .8, music: .55, sfx: .9 };
+  const vol = { master: .75, music: .38, sfx: .8 };
   let engine = null, rain = null, wind = null;
 
   function init() {
@@ -16,7 +16,13 @@ const Audio2 = (() => {
       const comp = ac.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 4;
       master.connect(comp); comp.connect(ac.destination);
       sfxBus = ac.createGain(); sfxBus.gain.value = vol.sfx; sfxBus.connect(master);
-      musicBus = ac.createGain(); musicBus.gain.value = 0; musicBus.connect(master);
+      // radio chain: warm low-pass + a small generated room reverb, so the synths sound less like raw MIDI
+      musicBus = ac.createGain(); musicBus.gain.value = 0;
+      const warm = ac.createBiquadFilter(); warm.type = 'lowpass'; warm.frequency.value = 3200; warm.Q.value = .5;
+      const rv = ac.createConvolver(), rl = Math.floor(ac.sampleRate * 1.6), ir = ac.createBuffer(2, rl, ac.sampleRate);
+      for (let ch = 0; ch < 2; ch++) { const dd = ir.getChannelData(ch); for (let i = 0; i < rl; i++) dd[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / rl, 3.2); }
+      rv.buffer = ir; const wet = ac.createGain(); wet.gain.value = .22; const dry = ac.createGain(); dry.gain.value = .85;
+      musicBus.connect(warm); warm.connect(dry); warm.connect(rv); rv.connect(wet); dry.connect(master); wet.connect(master);
       ambBus = ac.createGain(); ambBus.gain.value = .7; ambBus.connect(master);
       const n = ac.sampleRate * 2; noiseBuf = ac.createBuffer(1, n, ac.sampleRate);
       const d = noiseBuf.getChannelData(0); for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
@@ -108,7 +114,7 @@ const Audio2 = (() => {
     if (!ac) return;
     if (!engine) {
       const o1 = ac.createOscillator(), o2 = ac.createOscillator(), f = ac.createBiquadFilter(), g = ac.createGain(), lfo = ac.createOscillator(), lg = ac.createGain();
-      o1.type = 'sawtooth'; o2.type = 'square'; f.type = 'lowpass'; f.frequency.value = 400; g.gain.value = 0;
+      o1.type = 'sawtooth'; o2.type = 'triangle'; f.type = 'lowpass'; f.frequency.value = 300; g.gain.value = 0;
       lfo.frequency.value = 9; lg.gain.value = 0; lfo.connect(lg); lg.connect(g.gain);
       o1.connect(f); o2.connect(f); f.connect(g); g.connect(sfxBus); o1.start(); o2.start(); lfo.start();
       engine = { o1, o2, f, g, lfo, lg };
@@ -118,8 +124,8 @@ const Audio2 = (() => {
     speed01 = Math.min(1.3, speed01);
     const f0 = P[0] + (P[1] - P[0]) * speed01;
     e.o1.frequency.setTargetAtTime(Math.max(20, f0), t, .08); e.o2.frequency.setTargetAtTime(Math.max(20, f0 * .5), t, .08);
-    e.f.frequency.setTargetAtTime(kind === 'electric' ? 2500 : 300 + speed01 * 900, t, .1);
-    e.g.gain.setTargetAtTime(P[2] * (kind === 'none' ? 0 : .6 + speed01 * .4), t, .1);
+    e.f.frequency.setTargetAtTime(kind === 'electric' ? 1400 : 200 + speed01 * 520, t, .1);
+    e.g.gain.setTargetAtTime(P[2] * .55 * (kind === 'none' ? 0 : .55 + speed01 * .45), t, .1);
     e.lfo.frequency.setTargetAtTime(P[3] ? P[3] + speed01 * 10 : 1, t, .1); e.lg.gain.setTargetAtTime(P[3] ? P[2] * .5 : 0, t, .1);
     if (kind === 'electric') e.o1.type = 'sine'; else e.o1.type = 'sawtooth';
   }

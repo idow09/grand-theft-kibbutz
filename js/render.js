@@ -169,6 +169,32 @@ function drawVehicle(g, v) {
   if (v.stun > 0) drawStars(g, v.x, v.y - d.W / 2 - 6, v.id);
 }
 
+/* the kibbutz yellow gate: a tall sliding frame of vertical yellow bars with a diagonal brace,
+   rolling on a rail to the side of the road (open by day, shut at night / when wanted) */
+function drawYellowGate(g, o) {
+  const c = Math.cos(o.ang), s = Math.sin(o.ang), hw = o.hw, H = 24;
+  const W = (lx, ly) => [o.x + c * lx - s * ly, o.y + s * lx + c * ly];
+  // rail + fixed posts
+  const r0 = W(-hw - 3, 2.5), r1 = W(hw * 3.2, 2.5); // slides toward the guard booth, clear of the car-park entrance g.strokeStyle = 'rgba(40,40,40,.7)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(r0[0], r0[1]); g.lineTo(r1[0], r1[1]); g.stroke();
+  for (const lx of [-hw - 3, hw + 3]) { const p = W(lx, 0), t0 = proj(p[0], p[1], H + 5), t = [t0[0], t0[1] - (H + 5) * .62]; g.strokeStyle = '#4a4f53'; g.lineWidth = 3.4; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(t[0], t[1]); g.stroke(); }
+  if (o.broken) return;
+  const sl = o.openK * hw * 2.1, A = W(-hw + sl, 0), B = W(hw + sl, 0);
+  // a touch of 3/4 elevation on top of the true perspective, so the barred frame reads from above
+  const up = (p, h) => { const q = proj(p[0], p[1], h); return [q[0], q[1] - h * .62]; };
+  const At = up(A, H), Bt = up(B, H), Am = up(A, H * .5), Bm = up(B, H * .5);
+  g.fillStyle = 'rgba(0,0,0,.18)'; g.beginPath(); g.moveTo(A[0], A[1]); g.lineTo(B[0], B[1]); g.lineTo(B[0] + ENV.sunX * 14, B[1] - ENV.sunY * 14 + 6); g.lineTo(A[0] + ENV.sunX * 14, A[1] - ENV.sunY * 14 + 6); g.closePath(); g.fill();
+  const line = (p, q, w, col) => { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(p[0], p[1]); g.lineTo(q[0], q[1]); g.stroke(); };
+  g.lineCap = 'round';
+  const n = 13;
+  for (let i = 0; i <= n; i++) { const t = i / n, p = [lerp(A[0], B[0], t), lerp(A[1], B[1], t)], q = [lerp(At[0], Bt[0], t), lerp(At[1], Bt[1], t)]; line(p, q, 2.2, '#6b5410'); line(p, q, 1.3, '#ffd23f'); }
+  line(A, B, 3.4, '#6b5410'); line(A, B, 2.2, '#f2c230');
+  line(At, Bt, 3.6, '#6b5410'); line(At, Bt, 2.4, '#ffd84a');
+  line(Am, Bm, 2.2, '#6b5410'); line(Am, Bm, 1.4, '#f2c230');
+  line(A, Bt, 2.6, '#6b5410'); line(A, Bt, 1.6, '#f2c230');
+  const sg = up([lerp(A[0], B[0], .5), lerp(A[1], B[1], .5)], H * .72); g.fillStyle = '#fff'; g.beginPath(); g.arc(sg[0], sg[1], 3.2, 0, TAU); g.fill(); g.strokeStyle = '#d32'; g.lineWidth = 1.3; g.stroke(); g.fillStyle = '#d32'; g.fillRect(sg[0] - 1.8, sg[1] - .5, 3.6, 1);
+  g.lineCap = 'butt';
+}
+
 /* ---------------- ground-level props ---------------- */
 function drawPropFlat(g, o) {
   if (o.h > 20 && !o.broken) { // tree base
@@ -176,19 +202,7 @@ function drawPropFlat(g, o) {
     g.fillStyle = 'rgba(40,30,20,.5)'; g.beginPath(); g.arc(o.x, o.y, (o.r || 6) * .55, 0, TAU); g.fill(); return;
   }
   if (o.h > 20 && o.broken) { if (SPR.TREE[o.t]) drawFallenTree(g, o); return; }
-  if (o.t === 'ygate') { // the yellow gate: posts + two swinging leaves
-    if (o.broken) return;
-    g.save(); g.translate(o.x, o.y); g.rotate(o.ang); const hw = o.hw, swing = o.openK * Math.PI / 2 * .95, L = hw - 1;
-    for (const s of [-1, 1]) {
-      g.fillStyle = '#555'; g.fillRect(s * hw - 2.5, -2.5, 5, 5);
-      // leaf drawn from its hinge toward the centre; when open both leaves fold back along the road
-      g.save(); g.translate(s * hw, 0); g.rotate(s < 0 ? swing : Math.PI - swing);
-      g.fillStyle = '#ffd23f'; g.fillRect(0, -2, L, 4); g.strokeStyle = 'rgba(80,60,10,.8)'; g.lineWidth = .7; g.strokeRect(0, -2, L, 4);
-      g.fillStyle = '#222'; for (let x = 3; x < L - 2; x += 6) g.fillRect(x, -2, 2.5, 4);
-      g.restore();
-    }
-    g.restore(); return;
-  }
+  if (o.t === 'ygate') { drawYellowGate(g, o); return; }
   if (o.t === 'tamarisk' && !o.broken) { const s = SPR.tree('tamarisk', Math.floor(o.v * 3)); g.drawImage(s.cv, o.x - s.w / 2, o.y - s.h / 2, s.w, s.h); return; }
   const s = SPR.prop(o);
   g.save(); g.translate(o.x, o.y); if (o.ang) g.rotate(o.ang); g.drawImage(s.cv, -s.w / 2, -s.h / 2, s.w, s.h); g.restore();

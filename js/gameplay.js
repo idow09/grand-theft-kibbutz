@@ -493,14 +493,15 @@ function playerTick(dt) {
   pl._att = att;
 }
 function trample(v) {
+  // plain driving only leaves wheel ruts; the real damage is the PTO's job (see farm.js)
   const c = Math.cos(v.a), s = Math.sin(v.a), heavy = v.d.mass >= 15, wide = v.type === 'combine' ? 30 : v.d.W * .4;
-  for (const o of heavy ? [-1, -.33, .33, 1] : [-1, 1]) {
+  for (const o of [-1, 1]) {
     const wx = v.x - c * v.d.L * .25 - s * o * wide, wy = v.y - s * v.d.L * .25 + c * o * wide;
     const i = matIdx(wx, wy); if (i < 0) continue; const m = mat[i];
     if (MINFO[m].crop) {
-      if (!heavy && Math.random() < .7) continue;
-      mat[i] = M.STUBBLE; const cx = (i % MGW) * MCELL + 4, cy = Math.floor(i / MGW) * MCELL + 4;
-      Ground.addDecal({ k: 'crop', x: cx, y: cy, tex: m === M.ALFALFA || m === M.VINE ? 'mud' : 'stubble', ang: .07 });
+      if (Math.random() < (heavy ? .25 : .7)) continue;
+      mat[i] = M.DIRT; const cx = (i % MGW) * MCELL + 4, cy = Math.floor(i / MGW) * MCELL + 4;
+      Ground.addDecal({ k: 'crop', x: cx, y: cy, tex: 'dirt', ang: .07 });
       G.destroyed += heavy ? .25 : .1; if (Math.random() < .35) G.addScore(2, wx, wy, true);
       if (Math.random() < .25) FX.burst(wx, wy, [MINFO[m].col, '#e9cf6a'], 3, 50, 2);
       if (G.rampage && G.rampage.kind !== 'derby' && Math.random() < .08) G.rampage.onDestroy && G.rampage.onDestroy();

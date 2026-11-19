@@ -50,7 +50,7 @@ function genMap(seed) {
   MAP.access = addRoad(accPl, 'asphalt', 30, { name: 'כביש הגישה' });
   // gate: guard booth + raised barrier + kibbutz sign
   { const i = nearestIdx(accPl, Sg[0], Sg[1] + 90), p = accPl[i], a = plTan(accPl, i), n = [-Math.sin(a), Math.cos(a)];
-    addBuilding({ x: p[0] + n[0] * 34, y: p[1] + n[1] * 34, hw: 12, hh: 10, ang: a, h: 26, kind: 'booth', label: 'השער הצהוב' });
+    addBuilding({ x: p[0] + n[0] * 76 - Math.cos(a) * 14, y: p[1] + n[1] * 76 - Math.sin(a) * 14, hw: 12, hh: 10, ang: a, h: 26, kind: 'booth', label: 'השער הצהוב' });
     // the yellow gate itself: two swing leaves across the road (opens by day, shuts at night or when the kab"t is after you)
     MAP.gate = addProp('ygate', p[0], p[1], { ang: a + Math.PI / 2, hw: 19, open: true, solid: false, openK: 1 });
     poi('השער', p[0], p[1]);
