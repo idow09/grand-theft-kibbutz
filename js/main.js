@@ -62,7 +62,7 @@ function update(dt) {
   entitiesTick(dt);
   Farm.tick(dt);
   Combat.tick(dt); FX.tick(dt); Pickups.tick(dt);
-  wantedTick(dt); garageTick(dt);
+  wantedTick(dt); garageTick(dt); Discover.tick(dt);
   Missions.tick(dt); Missions.hostileTick(dt); Rampage.tick(dt);
   camTick(dt);
   // UI timers
@@ -100,19 +100,18 @@ function frame(now) {
     } else if (G.state === 'title') {
       titleTick(dt); draw(dt); drawMenu();
       const r = menuInput();
-      if (r === 'new') newGame(); else if (r === 'continue') continueGame(); else if (r === 'controls' || r === 'credits') { MENU.mode = r; MENU.sel = 0; } else if (r === 'back') { MENU.mode = 'title'; MENU.sel = 0; }
+      if (r === 'new') newGame(); else if (r === 'continue') continueGame(); else if (r) menuNav(r);
     } else if (G.state === 'play') {
       const rot = TOUCH.on && VH > VW;   // phone held upright: freeze until rotated
       if (P('Escape', 'KeyP')) { G.state = 'pause'; MENU.mode = 'pause'; MENU.sel = 0; }
       else if (P('KeyM')) { G.state = 'map'; }
       else if (!rot) update(dt);
-      draw(rot ? 0 : dt); drawHUD(dt); drawTouch();
+      draw(rot ? 0 : dt); drawHUD(dt); Discover.draw(); drawTouch();
       if (rot) { G.time += dt; drawRotate(); }
     } else if (G.state === 'pause') {
       draw(0); drawHUD(0); drawMenu();
-      if (MENU.mode === 'controls' || MENU.mode === 'credits') { const r = menuInput(); if (r) { MENU.mode = 'pause'; MENU.sel = 0; } }
-      else { const r = menuInput(); if (r === 'resume') G.state = 'play'; else if (r === 'map') G.state = 'map';
-        else if (r === 'music' || r === 'sfx') { Audio2.vol[r] = Audio2.vol[r] >= .95 ? 0 : Math.round(Audio2.vol[r] * 10 + 2) / 10; Audio2.vol[r] = Math.min(1, Audio2.vol[r]); Audio2.applyVol(); Audio2.sfx('click'); } else if (r === 'controls' || r === 'credits') { MENU.mode = r; MENU.sel = 0; } else if (r === 'new') newGame(); }
+      { const r = menuInput(); if (r === 'resume') G.state = 'play'; else if (r === 'map') G.state = 'map';
+        else if (r === 'music' || r === 'sfx') { Audio2.vol[r] = Audio2.vol[r] >= .95 ? 0 : Math.round(Audio2.vol[r] * 10 + 2) / 10; Audio2.vol[r] = Math.min(1, Audio2.vol[r]); Audio2.applyVol(); Audio2.sfx('click'); } else if (r === 'new') newGame(); else if (r) menuNav(r); }
       Audio2.radioTick(false);
     } else if (G.state === 'map') {
       draw(0); drawBigMap(); if (P('KeyM', 'Escape', 'Enter')) G.state = 'play'; Audio2.radioTick(false);

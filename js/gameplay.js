@@ -377,7 +377,7 @@ function garageTick(dt) {
     if (sprayT > 1.4) {
       const cost = Math.min(G.money, 60 + G.level * 30); G.money -= cost;
       if (v) { v.hp = v.d.hp; v.dead = false; v.col = pick(KCOLS[v.type] || ['#888']); v.flood = 0; }
-      resetWanted(); sprayT = 0; G.sprayProg = 0;
+      resetWanted(); sprayT = 0; G.sprayProg = 0; Discover.markGarage();
       G.bigBanner(g.name, pick(['קצת צבע, קצת שמן — כולם שכחו אותך', 'שלומי לא שואל שאלות', 'כמו חדש. בערך']) + ` · ${cost} ₪`, '#9be26b'); Audio2.sfx('cash');
     }
   } else { sprayT = Math.max(0, sprayT - dt * 2); G.sprayProg = sprayT / 1.4; }

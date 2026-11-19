@@ -152,9 +152,35 @@ function drawLogo(cx, top, maxW, maxH) {
 /* ---------------- menus ---------------- */
 const MENU = { sel: 0, items: [], mode: 'title', anim: 0 };
 function menuItems() {
-  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], ['איך משחקים', 'controls'], ['קרדיטים', 'credits']].filter(Boolean);
-  if (MENU.mode === 'pause') return [['חזרה למשחק', 'resume'], ['מפה', 'map'], [`מוזיקה: ${Math.round(Audio2.vol.music * 10)}`, 'music'], [`צלילים: ${Math.round(Audio2.vol.sfx * 10)}`, 'sfx'], ['איך משחקים', 'controls'], ['קרדיטים', 'credits'], ['משחק חדש', 'new']];
+  const disc = [`⭐ שווה לנסות (${Discover.count()}/${Discover.FEATS.length})`, 'discover'], share = ['📤 שלחו לחבר', 'share'];
+  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], disc, ['איך משחקים', 'controls'], share, ['קרדיטים', 'credits']].filter(Boolean);
+  if (MENU.mode === 'pause') return [['חזרה למשחק', 'resume'], ['מפה', 'map'], disc, [`מוזיקה: ${Math.round(Audio2.vol.music * 10)}`, 'music'], [`צלילים: ${Math.round(Audio2.vol.sfx * 10)}`, 'sfx'], ['איך משחקים', 'controls'], share, ['קרדיטים', 'credits'], ['משחק חדש', 'new']];
+  if (MENU.mode === 'share') return [['וואטסאפ', 'wa'], ['העתקת קישור', 'copy'], ['חזרה', 'back']];
   return [['חזרה', 'back']];
+}
+/* ---------------- sharing ---------------- */
+const SHARE_TEXT = 'גרנד תאפט קיבוץ 🚜 GTA על קיבוץ, ישר בדפדפן. גונבים טרקטור, מעצבנים את הוותיקים ובורחים מהשער הצהוב';
+const shareUrl = () => location.origin + location.pathname;
+function startShare() {
+  // phones get the native share sheet (WhatsApp, Telegram, SMS...), desktops a small page
+  if (TOUCH.on && navigator.share) { navigator.share({ title: 'Grand Theft Kibbutz', text: SHARE_TEXT, url: shareUrl() }).catch(() => { }); return; }
+  MENU.mode = 'share'; MENU.sel = 0;
+}
+function shareAct(r) {
+  if (r === 'wa') window.open('https://wa.me/?text=' + encodeURIComponent(SHARE_TEXT + '\n' + shareUrl()), '_blank', 'noopener');
+  if (r === 'copy') {
+    const ok = () => { MENU.flash = { t: 'הקישור הועתק! עכשיו להדביק לחברים', life: 2.5 }; Audio2.sfx('cash'); };
+    try { navigator.clipboard.writeText(SHARE_TEXT + '\n' + shareUrl()).then(ok, () => { MENU.flash = { t: shareUrl(), life: 6 }; }); } catch (e) { MENU.flash = { t: shareUrl(), life: 6 }; }
+  }
+}
+// sub-pages shared by the title and pause menus; returns true when it handled r
+const SUBPAGES = ['controls', 'credits', 'discover', 'share'];
+function menuNav(r) {
+  if (r === 'controls' || r === 'credits' || r === 'discover') { MENU.mode = r; MENU.sel = 0; return true; }
+  if (r === 'share') { startShare(); return true; }
+  if (r === 'wa' || r === 'copy') { shareAct(r); return true; }
+  if (r === 'back') { MENU.mode = G.state === 'pause' ? 'pause' : 'title'; MENU.sel = 0; return true; }
+  return false;
 }
 function menuInput() {
   const items = menuItems();
@@ -164,7 +190,7 @@ function menuInput() {
   const it = items[MENU.sel];
   if ((P('ArrowLeft', 'ArrowRight', 'KeyA', 'KeyD')) && (it[1] === 'music' || it[1] === 'sfx')) { const d = P('ArrowRight', 'KeyD') ? -.1 : .1; Audio2.vol[it[1]] = clamp(Math.round((Audio2.vol[it[1]] + d) * 10) / 10, 0, 1); Audio2.applyVol(); Audio2.sfx('click'); }
   if (P('Enter', 'Space') || (mouseClicked && MENU.hover !== undefined)) { if (mouseClicked && MENU.hover !== undefined) MENU.sel = MENU.hover; return menuItems()[MENU.sel][1]; }
-  if (P('Escape') && MENU.mode !== 'title') return MENU.mode === 'controls' || MENU.mode === 'credits' ? 'back' : 'resume';
+  if (P('Escape') && MENU.mode !== 'title') return SUBPAGES.includes(MENU.mode) ? 'back' : 'resume';
   return null;
 }
 function drawMenu() {
@@ -172,7 +198,9 @@ function drawMenu() {
   const title = MENU.mode === 'title';
   const gr = ctx.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, 'rgba(10,12,20,.72)'); gr.addColorStop(.5, 'rgba(10,12,20,.35)'); gr.addColorStop(1, 'rgba(10,12,20,.85)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
   const tz = Math.min(1, VW / 820, VH / 620);
-  if ((title || MENU.mode === 'pause') && LOGO.complete && LOGO.naturalWidth) {
+  const pauseShort = MENU.mode === 'pause' && VH < 560;
+  if (pauseShort) { /* short screens: the pause list needs the room more than the logo does */ }
+  else if ((title || MENU.mode === 'pause') && LOGO.complete && LOGO.naturalWidth) {
     drawLogo(VW / 2, VH * .025, VW * .92, VH * (VH < 560 ? .41 : .46));
   } else if (title || MENU.mode === 'pause') {
     ctx.save(); ctx.translate(VW / 2, VH * .2); ctx.scale(tz, tz); ctx.rotate(-.025);
@@ -187,8 +215,18 @@ function drawMenu() {
   }
   if (MENU.mode === 'controls') { drawControls(); }
   if (MENU.mode === 'credits') { drawCredits(); }
-  const items = menuItems(), y0 = MENU.mode === 'controls' || MENU.mode === 'credits' ? VH - 70 : VH * (VH < 560 ? .45 : .52);
-  const step = Math.max(30, Math.min(46, (VH - 30 - y0) / Math.max(1, items.length - 1 || 1)));
+  if (MENU.mode === 'discover') { Discover.drawPage(); }
+  if (MENU.mode === 'share') {
+    const w = Math.min(440, VW - 24), h = 118, y = Math.max(10, VH * .5 - 150);
+    panel(VW / 2 - w / 2, y, w, h, .86, 14);
+    T('📤 שלחו לחבר', VW / 2, y + 28, 22, '#ffd84a', 'center');
+    T('מי מהחברים שלך גדל בקיבוץ? שיראה מה הוא מפספס', VW / 2, y + 60, 14, '#eef3f6', 'center', { stroke: false });
+    T(shareUrl().replace(/^https?:\/\//, ''), VW / 2, y + 90, 14, '#9fd8ff', 'center', { dir: 'ltr', stroke: false });
+  }
+  if (MENU.flash) { MENU.flash.life -= 1 / 60; const f = MENU.flash; ctx.globalAlpha = Math.min(1, f.life); T(f.t, VW / 2, VH - 44, 15, '#9be26b', 'center', { dir: f.t.startsWith('http') ? 'ltr' : 'rtl' }); ctx.globalAlpha = 1; if (f.life <= 0) MENU.flash = null; }
+  const items = menuItems(), y0 = MENU.mode === 'controls' || MENU.mode === 'credits' || MENU.mode === 'discover' ? VH - 70 : MENU.mode === 'share' ? VH * .5 + 4 : pauseShort ? VH * .1 : VH * (VH < 560 ? .45 : .52);
+  const reserve = title && TOUCH.on ? (VH < 500 ? 60 : 76) : 30;   // keep the play-on-a-computer note clear
+  const step = Math.max(26, Math.min(46, (VH - reserve - y0) / Math.max(1, items.length - 1 || 1)));
   MENU.hover = undefined;
   items.forEach(([n], i) => {
     const y = y0 + i * step, sel = i === MENU.sel, w = 280;
@@ -198,7 +236,7 @@ function drawMenu() {
   });
   if (title && TOUCH.on) {
     // phones work, but the game is built for a keyboard and a big screen: say so up front
-    const short = VH < 500, w = Math.min(VW - 24, 340), h = short ? 40 : 50, y = VH - h / 2 - (short ? 6 : 14);
+    const short = VH < 500, w = Math.min(VW - 24, 340), h = short ? 36 : 50, y = VH - h / 2 - (short ? 4 : 14);
     panel(VW / 2 - w / 2, y - h / 2, w, h, .8, 12);
     T('💻 מומלץ לשחק במחשב', VW / 2, y - (short ? 8 : 10), short ? 14 : 16, '#ffd84a', 'center', { stroke: false });
     T('עם מקלדת ומסך גדול. בטלפון זה עובד, אבל פחות נוח', VW / 2, y + (short ? 9 : 12), short ? 11 : 12, '#dde6ea', 'center', { stroke: false });
