@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="he"><head><meta charset="utf-8"><title>GTK map viewer</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#111}canvas{display:block}#i{position:fixed;left:8px;top:8px;color:#fff;font:12px monospace;background:rgba(0,0,0,.6);padding:4px}</style></head>
+<body><canvas id="c"></canvas><div id="i"></div>
+<script src="../js/core.js"></script><script src="../js/textures.js"></script><script src="../js/world.js"></script><script src="../js/mapgen.js"></script><script src="../js/ground.js"></script>
+<script>
+// Dev tool: drag to pan, wheel to zoom, 'g' toggles graph overlay.
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');let VW,VH;function rs(){VW=cv.width=innerWidth;VH=cv.height=innerHeight;}rs();addEventListener('resize',rs);
+const t0=performance.now();buildTextures();const t1=performance.now();genMap(1910);const t2=performance.now();rasterizeMaterials();genWild();buildGraph();Ground.init();Ground.buildMini();const t3=performance.now();
+const info=`tex ${(t1-t0)|0}ms gen ${(t2-t1)|0}ms raster+graph ${(t3-t2)|0}ms | roads ${roads.length} nodes ${graphNodes.length} bld ${buildings.length} props ${props.length} feats ${features.length}`;
+let cx=3150,cy=2250,z=.35,drag=null,showG=false;
+cv.onmousedown=e=>drag=[e.clientX,e.clientY];onmouseup=()=>drag=null;onmousemove=e=>{if(drag){cx-=(e.clientX-drag[0])/z;cy-=(e.clientY-drag[1])/z;drag=[e.clientX,e.clientY];}};
+cv.onwheel=e=>{z*=e.deltaY<0?1.15:1/1.15;z=clamp(z,.06,3);};onkeydown=e=>{if(e.key==='g')showG=!showG;};
+function loop(){ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle='#111';ctx.fillRect(0,0,VW,VH);
+ ctx.setTransform(z,0,0,z,VW/2-cx*z,VH/2-cy*z);const x0=cx-VW/2/z,y0=cy-VH/2/z,x1=cx+VW/2/z,y1=cy+VH/2/z;
+ if(z<.2){ctx.imageSmoothingEnabled=true;ctx.drawImage(Ground.mini,0,0,WORLD_W,WORLD_H);}else Ground.draw(ctx,x0,y0,x1,y1,6);
+ for(const b of buildings){ctx.fillStyle=b.roofOnly?'rgba(220,220,220,.6)':'#c96';ctx.strokeStyle='#000';if(b.shape==='circle'){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,TAU);ctx.fill();ctx.stroke();}else{ctx.beginPath();b.poly.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fill();ctx.stroke();}}
+ if(z>.25)for(const p of props){if(p.x<x0||p.x>x1||p.y<y0||p.y>y1)continue;ctx.fillStyle=p.h>20?'rgba(30,90,30,.8)':'rgba(255,0,255,.7)';if(p.r){ctx.beginPath();ctx.arc(p.x,p.y,p.h>20?p.r+6:p.r,0,TAU);ctx.fill();}else{ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.ang);ctx.fillRect(-p.hw,-p.hh,p.hw*2,p.hh*2);ctx.restore();}}
+ if(showG){ctx.lineWidth=2/z;for(const n of graphNodes){for(const e of n.nb){ctx.strokeStyle=e.r.kind==='path'?'#0ff':e.r.kind==='track'||e.r.kind==='dirt'?'#fa0':'#f0f';ctx.beginPath();ctx.moveTo(n.x,n.y);ctx.lineTo(e.n.x,e.n.y);ctx.stroke();}if(n.nb.length!==2){ctx.fillStyle=n.nb.length===1?'#f00':'#ff0';ctx.fillRect(n.x-4/z,n.y-4/z,8/z,8/z);}}}
+ ctx.setTransform(1,0,0,1,0,0);document.getElementById('i').textContent=info+` | ${MAP.district(cx,cy)} z ${z.toFixed(2)}`;requestAnimationFrame(loop);}
+loop();
+</script></body></html>
