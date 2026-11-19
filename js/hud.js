@@ -252,7 +252,7 @@ function drawCredits() {
   T('GRAND THEFT KIBBUTZ', VW / 2, y + (short ? 26 : 36), short ? 17 : 21, '#9be26b', 'center', { dir: 'ltr', w: 800 });
   let yy = y + (short ? 58 : 76);
   for (const l of lines) { T(l, VW / 2, yy, short ? 15 : 17, '#eef3f6', 'center', { w: 500, stroke: false }); yy += lh; }
-  yy += short ? 6 : 10; T('idow09@gmail.com', VW / 2, yy, short ? 14 : 16, '#9fd8ff', 'center', { dir: 'ltr', w: 600, stroke: false });
+  yy += short ? 6 : 10; menuLink('✉️ hello@gtkibbutz.com', 'mailto:hello@gtkibbutz.com', VW / 2, yy, short ? 14 : 16);
   yy += short ? 24 : 32; T('קוד, גרפיקה וסאונד: Claude (Anthropic)', VW / 2, yy, short ? 12 : 13, '#8a96a0', 'center', { w: 500, stroke: false });
   yy += short ? 26 : 36; menuLink('⭐ קוד פתוח ב-GitHub', GITHUB_URL, VW / 2, yy, short ? 14 : 16);
   yy += short ? 24 : 32; T('פרודיה של מעריצים. אין קשר ל-Rockstar Games או ל-Grand Theft Auto.', VW / 2, yy, short ? 11 : 12, '#8a96a0', 'center', { w: 500, stroke: false });
@@ -267,7 +267,11 @@ function menuLink(text, url, cx, cy, fs) {
   T(text, cx, cy, fs, hov ? '#c8f5a8' : '#9be26b', 'center', { stroke: false });
   MENU.links.push({ x: cx - w / 2, y: cy - h / 2, w, h, url });
 }
-function openLink(url) { const w = window.open(url, '_blank', 'noopener'); if (!w) location.href = url; }
+function openLink(url) {
+  if (url.startsWith('mailto:')) { location.href = url; return; }   // hands off to the mail app, the game stays put
+  // noopener makes window.open return null even on success, so only fall back when the popup was really blocked
+  const w = window.open(url, '_blank'); if (w) w.opener = null; else location.href = url;
+}
 function drawControls() {
   const L = TOUCH.on ? [
     ['תנועה / נהיגה', 'ג׳ויסטיק משמאל'], ['ריצה', 'ג׳ויסטיק עד הסוף'], ['כניסה / יציאה / טלפון', 'כפתור ירוק'], ['תקיפה / ירי', 'כפתור אדום'], ['החלפת נשק', '⇄'],
