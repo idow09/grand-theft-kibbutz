@@ -196,7 +196,13 @@ function drawMenu() {
     if (sel) { panel(VW / 2 - w / 2, y - 20, w, 40, .6, 20); ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.roundRect(VW / 2 + w / 2 - 8, y - 12, 4, 24, 2); ctx.fill(); }
     T(n, VW / 2, y, sel ? 24 : 20, sel ? '#ffd84a' : '#ddd', 'center');
   });
-  if (title) T(TOUCH.on ? 'v2 · נגיעה לבחירה' : 'v2 · חיצים + Enter · או עכבר', VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
+  if (title && TOUCH.on) {
+    // phones work, but the game is built for a keyboard and a big screen: say so up front
+    const short = VH < 500, w = Math.min(VW - 24, 340), h = short ? 40 : 50, y = VH - h / 2 - (short ? 6 : 14);
+    panel(VW / 2 - w / 2, y - h / 2, w, h, .8, 12);
+    T('💻 מומלץ לשחק במחשב', VW / 2, y - (short ? 8 : 10), short ? 14 : 16, '#ffd84a', 'center', { stroke: false });
+    T('עם מקלדת ומסך גדול. בטלפון זה עובד, אבל פחות נוח', VW / 2, y + (short ? 9 : 12), short ? 11 : 12, '#dde6ea', 'center', { stroke: false });
+  } else if (title) T('v2 · חיצים + Enter · או עכבר', VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
 }
 function drawCredits() {
   const w = Math.min(600, VW - 32), x = VW / 2 - w / 2, short = VH < 560, y = short ? 14 : VH * .14;
