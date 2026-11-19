@@ -3,6 +3,8 @@
    core.js — math, RNG, noise, geometry, input
    ================================================================ */
 const TAU = Math.PI * 2;
+// anonymous event count on GoatCounter (no cookies, nothing personal); does nothing when blocked or offline
+function track(name) { try { if (window.goatcounter && goatcounter.count) goatcounter.count({ path: name, title: name, event: true }); } catch (e) { } }
 const rnd = (a, b) => a + Math.random() * (b - a);
 const rint = (a, b) => Math.floor(rnd(a, b + 1));
 const pick = a => a[Math.floor(Math.random() * a.length)];

@@ -163,10 +163,11 @@ const SHARE_TEXT = 'גרנד תאפט קיבוץ 🚜 GTA על קיבוץ, יש�
 const shareUrl = () => location.origin + location.pathname;
 function startShare() {
   // phones get the native share sheet (WhatsApp, Telegram, SMS...), desktops a small page
-  if (TOUCH.on && navigator.share) { navigator.share({ title: 'Grand Theft Kibbutz', text: SHARE_TEXT, url: shareUrl() }).catch(() => { }); return; }
+  if (TOUCH.on && navigator.share) { track('share-native'); navigator.share({ title: 'Grand Theft Kibbutz', text: SHARE_TEXT, url: shareUrl() }).catch(() => { }); return; }
   MENU.mode = 'share'; MENU.sel = 0;
 }
 function shareAct(r) {
+  track(r === 'wa' ? 'share-whatsapp' : 'share-copy');
   if (r === 'wa') openLink('https://wa.me/?text=' + encodeURIComponent(SHARE_TEXT + '\n' + shareUrl()));
   if (r === 'copy') {
     const ok = () => { MENU.flash = { t: 'הקישור הועתק! עכשיו להדביק לחברים', life: 2.5 }; Audio2.sfx('cash'); };

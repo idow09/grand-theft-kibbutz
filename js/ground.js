@@ -98,18 +98,29 @@ const Ground = (() => {
       for (let cy = Math.floor((Math.min(d.y, d.y2 ?? d.y) - r) / CS); cy <= Math.floor((Math.max(d.y, d.y2 ?? d.y) + r) / CS); cy++) {
         const k = key(cx, cy); let a = decals.get(k); if (!a) { a = []; decals.set(k, a); }
         a.push(d); if (a.length > 900) a.splice(0, 100);
-        const c = cache.get(k); if (c) { c.g.save(); drawDecal(c.g, d); c.g.restore(); }
+        const c = cache.get(k); if (c) { c.g.save(); drawDecal(c.g, d); c.g.restore(); c.mips = null; }
       }
   }
-  function draw(g, x0, y0, x1, y1, budget) {
+  // canvas drawImage has no mipmaps: shrinking the fine crop rows a lot (plane altitude, small screens)
+  // makes them crawl and moiré. Keep box-filtered half/quarter copies and draw the one closest to 1:1.
+  function mip(c, lv) {
+    if (!c.mips) c.mips = [c.cv];
+    for (let i = c.mips.length; i <= lv; i++) {
+      const src = c.mips[i - 1], n = src.width >> 1, cv = mkCanvas(n, n), g = cv.getContext('2d');
+      g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high'; g.drawImage(src, 0, 0, n, n); c.mips.push(cv);
+    }
+    return c.mips[lv];
+  }
+  function draw(g, x0, y0, x1, y1, budget, scale) {
     frame++;
     let baked = 0;
+    const tx = (scale || GS) / GS, lv = tx < .3 ? 2 : tx < .6 ? 1 : 0; // device pixels per baked texel
     for (let cx = Math.floor(x0 / CS); cx <= Math.floor(x1 / CS); cx++) for (let cy = Math.floor(y0 / CS); cy <= Math.floor(y1 / CS); cy++) {
       if (cx < 0 || cy < 0 || cx * CS >= WORLD_W || cy * CS >= WORLD_H) continue;
       let c = cache.get(key(cx, cy));
       if (!c) { if (baked < budget) { c = bake(cx, cy); baked++; } else { g.fillStyle = '#a49a63'; g.fillRect(cx * CS, cy * CS, CS, CS); continue; } }
       c.used = frame;
-      g.drawImage(c.cv, cx * CS, cy * CS, CS + .5, CS + .5);
+      g.drawImage(lv ? mip(c, lv) : c.cv, cx * CS, cy * CS, CS + .5, CS + .5);
     }
   }
   function prebake(x, y, r) { for (let cx = Math.floor((x - r) / CS); cx <= Math.floor((x + r) / CS); cx++) for (let cy = Math.floor((y - r) / CS); cy <= Math.floor((y + r) / CS); cy++) if (cx >= 0 && cy >= 0 && !cache.has(key(cx, cy))) bake(cx, cy); }

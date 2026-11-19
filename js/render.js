@@ -217,7 +217,7 @@ function draw(dt) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.fillStyle = '#9a9060'; ctx.fillRect(0, 0, VW, VH);
   worldT(ctx); ctx.imageSmoothingEnabled = true;
   const m = 80, x0 = CAM.x - CAM.hw - m, y0 = CAM.y - CAM.hh - m, x1 = CAM.x + CAM.hw + m, y1 = CAM.y + CAM.hh + m;
-  Ground.draw(ctx, CAM.x - CAM.hw - 10, CAM.y - CAM.hh - 10, CAM.x + CAM.hw + 10, CAM.y + CAM.hh + 10, G.state === 'play' ? 4 : 10);
+  Ground.draw(ctx, CAM.x - CAM.hw - 10, CAM.y - CAM.hh - 10, CAM.x + CAM.hw + 10, CAM.y + CAM.hh + 10, G.state === 'play' ? 4 : 10, DPR * CAM.z);
   const night = ENV.night;
   pgrid.query(x0, y0, x1, y1, _vq2);
   // ---- shadows ----

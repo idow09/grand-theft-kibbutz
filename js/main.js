@@ -48,6 +48,8 @@ const INTRO_TIPS = [[1.5, 'WASD / חיצים לתנועה · Shift לריצה'],
 let introT = -1;
 function startPlay(fresh) {
   G.state = 'play'; Audio2.init(); G.time = G.time || 0;
+  track(fresh ? 'play-new' : 'play-continue');
+  if (!G.trackedDev) { G.trackedDev = 1; track(TOUCH.on ? 'played-on-phone' : 'played-on-computer'); }
   G.bigBanner(fresh ? 'חזרת מהצבא' : 'חזרת לקיבוץ', fresh ? 'סידור העבודה כבר מחכה' : 'הוועד עדיין זוכר', '#ffd84a');
   introT = fresh ? 0 : -1; G.radioCard = 0;
 }

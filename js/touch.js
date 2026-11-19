@@ -165,8 +165,10 @@ function drawTouch() {
   if (nW > 1) tBtn('wp', ax - 92 * sc, ay + 22 * sc, 26 * sc, { t: '⇄', ts: 18, sub: am });
   else if (am) T(am, ax, ay + 56 * sc, 12, '#ffd84a', 'center');
   if (v) {
-    tBtn('act', ax - (ranged ? 18 : 0) * sc, ay - (ranged ? 100 : 30) * sc, 30 * sc, { t: 'יציאה', ts: 13 });
-    tBtn('hb', ax - (ranged ? 100 : 110) * sc, ay - (ranged ? 50 : 10) * sc, 34 * sc, { t: 'בלם', ts: 14, bg: 'rgba(30,60,140,.55)' });
+    // the plane always shows the spray button, so make room for it like a ranged weapon
+    const att = ranged || v.d.plane;
+    tBtn('act', ax - (att ? 18 : 0) * sc, ay - (att ? 100 : 30) * sc, 30 * sc, { t: 'יציאה', ts: 13 });
+    tBtn('hb', ax - (att ? 100 : 110) * sc, ay - (att ? 50 : 10) * sc, 34 * sc, { t: 'בלם', ts: 14, bg: 'rgba(30,60,140,.55)' });
     tBtn('horn', ax - 150 * sc, ay - 110 * sc, 22 * sc, { t: '📯', ts: 15, a: .7 });
     if (v.d.radio) tBtn('radio', VW / 2 + 120, VH - 34, 22, { t: '📻', ts: 15, a: .75 });
   } else if (G.interact && G.interact.k !== 'shop') {

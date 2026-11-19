@@ -38,7 +38,7 @@ const Discover = (() => {
     if (v && v.hitch && v.hitch.type === 'trailer' && v.vx * Math.cos(v.a) + v.vy * Math.sin(v.a) < -12) S.revT += dt; else S.revT = Math.max(0, S.revT - dt * .5);
     for (const f of FEATS) {
       if (st.tried[f.id] || !f.done(v, S)) continue;
-      st.tried[f.id] = 1; save();
+      st.tried[f.id] = 1; save(); track('found-' + f.id);
       if (cur && cur.f === f) cur.life = Math.min(cur.life, .6);
       G.msg(`✓ ${f.n} (${count()}/${FEATS.length} שווה לנסות)`, '#9be26b');
     }
