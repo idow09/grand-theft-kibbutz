@@ -5,7 +5,8 @@
    ================================================================ */
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 let VW = 0, VH = 0, DPR = 1;
-function resize() { DPR = Math.min(2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight; cv.width = VW * DPR; cv.height = VH * DPR; shadowCv = null; lightCv = null; }
+const QUALITY = { low: false, acc: 0, n: 0 };
+function resize() { const tch = typeof TOUCH !== 'undefined' && TOUCH.on; DPR = Math.min(QUALITY.low ? 1 : tch ? 1.5 : 2, window.devicePixelRatio || 1); VW = innerWidth; VH = innerHeight; cv.width = VW * DPR; cv.height = VH * DPR; shadowCv = null; lightCv = null; }
 addEventListener('resize', resize);
 const CAM = { x: 3150, y: 2250, z: 1, hw: 600, hh: 400, mouse: null, sx: 0, sy: 0 };
 let shadowCv = null, lightCv = null, mouseScreen = null;
@@ -15,7 +16,7 @@ function camTick(dt) {
   const v = Player.veh, tx = v ? v.x + v.vx * .42 : Player.x + Player.vx * .15, ty = v ? v.y + v.vy * .42 : Player.y + Player.vy * .15;
   CAM.x += (tx - CAM.x) * Math.min(1, dt * 4.5); CAM.y += (ty - CAM.y) * Math.min(1, dt * 4.5);
   const sp = v ? Math.hypot(v.vx, v.vy) : 0;
-  const base = clamp(Math.min(VW, VH * 1.45) / 1050, .62, 1.5);
+  const base = clamp(Math.min(VW, VH * 1.45) / 1050, .62, 1.5) * (TOUCH.on && VH < 600 ? 1.18 : 1);
   const tz = (v ? 1.02 - Math.min(.36, sp / 650) - (v.d.L > 70 ? .12 : 0) : 1.16) * base * (G.mapZoom || 1);
   CAM.z += (tz - CAM.z) * Math.min(1, dt * 1.8);
   CAM.hw = VW / 2 / CAM.z; CAM.hh = VH / 2 / CAM.z;
@@ -322,7 +323,7 @@ function drawWorldText(g) {
   const bub = (x, y, txt) => { g.font = `600 11px ${FONT}`; g.direction = /^[A-Za-z]/.test(txt) ? 'ltr' : 'rtl'; const w = g.measureText(txt).width + 10; g.fillStyle = 'rgba(255,255,255,.95)'; g.beginPath(); g.roundRect(x - w / 2, y - 8, w, 16, 6); g.fill(); g.beginPath(); g.moveTo(x - 4, y + 7); g.lineTo(x + 2, y + 13); g.lineTo(x + 4, y + 7); g.fill(); g.fillStyle = '#1a1a1a'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(txt, x, y); };
   for (const p of peds) if (p.sayL > 0 && p.sayT && inView(p.x, p.y, 40)) bub(p.x, p.y - (p.veh ? 26 : 20), p.sayT);
   for (const f of FX.floaters) { if (!inView(f.x, f.y, 30)) continue; g.globalAlpha = Math.min(1, f.life * 2); textOut(g, f.text, f.x, f.y, 13, f.col, 'center', 'ltr'); g.globalAlpha = 1; }
-  if (G.interact && !G.shopMenu) textOut(g, G.interact.t, Player.x, Player.y - 26, 12, '#fff', 'center', 'rtl');
+  if (G.interact && !G.shopMenu) textOut(g, TOUCH.on ? G.interact.t.replace('[E] ', '') : G.interact.t, Player.x, Player.y - 26, 12, '#fff', 'center', 'rtl');
 }
 function textOut(g, s, x, y, size, col, al, dir, bold) {
   g.font = `${bold === false ? '' : 'bold '}${size}px Arial, sans-serif`; g.direction = dir || 'rtl'; g.textAlign = al || 'center'; g.textBaseline = 'middle';

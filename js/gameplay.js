@@ -9,7 +9,7 @@ const G = {
   district: '', districtT: 0, vehToast: null, mission: null, rampage: null, interact: null, spawnT: 0, tips: {}, saveT: 60, shopMenu: null, bustedMsg: '',
   msg(t, col) { this.msgs.push({ t, col: col || '#fff', life: 5 }); if (this.msgs.length > 4) this.msgs.shift(); },
   bigBanner(t, sub, col, life) { this.banner = { t, sub: sub || '', col: col || '#ffe14a', life: life || 3.4 }; },
-  tip(id, t) { if (this.tips[id]) return; this.tips[id] = 1; this.msg(t, '#cfe9ff'); },
+  tip(id, t) { if (this.tips[id]) return; this.tips[id] = 1; if (TOUCH.on && TOUCH_TIPS[id]) t = TOUCH_TIPS[id]; this.msg(t, '#cfe9ff'); },
   get mult() { return 1 + Math.min(4, Math.floor(this.combo / 5)); },
   addScore(base, x, y, noCombo) {
     if (!noCombo) { this.combo++; this.comboT = 5; }
@@ -436,11 +436,12 @@ function playerTick(dt) {
   if (pl.out > 0) { pl.out -= dt; if (pl.out <= 0) respawnPlayer(); return; }
   if (pl.flash > 0) pl.flash -= dt; if (pl.punch > 0) pl.punch -= dt; if (pl.cd > 0) pl.cd -= dt; if (pl.throwT > 0) pl.throwT -= dt; if (pl.stumble > 0) pl.stumble -= dt;
   if (P('KeyQ', 'Tab')) cycleWeapon(K('ShiftLeft', 'ShiftRight') ? -1 : 1);
-  const att = K('KeyJ', 'ControlLeft', 'ControlRight') || mouseDown;
+  const att = K('KeyJ', 'ControlLeft', 'ControlRight') || mouseDown || TOUCH.att;
   if (pl.veh) {
     const v = pl.veh, c = v.ctrl;
     c.thr = (K('KeyW', 'ArrowUp') ? 1 : 0) - (K('KeyS', 'ArrowDown') ? 1 : 0);
     c.steer = (K('KeyD', 'ArrowRight') ? 1 : 0) - (K('KeyA', 'ArrowLeft') ? 1 : 0); c.hb = K('Space');
+    if (!c.thr && !c.steer) touchDrive(v, c);
     if (P('KeyH') && v.horn <= 0) {
       v.horn = .45; Audio2.sfx(v.d.horn || 'horn', v.x, v.y);
       for (const q of peds) if (!q.veh && q.state !== 'ko' && !q.animal && dist(q.x, q.y, v.x, v.y) < 120 && (q.state === 'walk' || q.state === 'idle')) { q.state = 'flee'; q.timer = 1.5; say(q, 'היי!', 1); }
@@ -460,13 +461,15 @@ function playerTick(dt) {
     if (P('KeyR')) { if (!v.d.radio) G.msg('אין רדיו ב' + v.d.name, '#ccc'); else { Audio2.setStation(Audio2.stationIndex + 1); G.radioCard = 3; } }
   } else {
     let mx = (K('KeyD', 'ArrowRight') ? 1 : 0) - (K('KeyA', 'ArrowLeft') ? 1 : 0), my = (K('KeyS', 'ArrowDown') ? 1 : 0) - (K('KeyW', 'ArrowUp') ? 1 : 0);
+    const tw = !mx && !my ? touchWalk() : null; if (tw) { mx = tw[0]; my = tw[1]; }
     const m = Math.hypot(mx, my); pl.swim = MINFO[matAt(pl.x, pl.y)].water;
-    const sp = (K('ShiftLeft', 'ShiftRight') ? 142 : 100) * (pl.swim ? .45 : 1) * (pl.stumble > 0 ? .3 : 1);
+    const sp = (tw ? 100 * tw[2] : K('ShiftLeft', 'ShiftRight') ? 142 : 100) * (pl.swim ? .45 : 1) * (pl.stumble > 0 ? .3 : 1);
     if (m > 0) { mx /= m; my /= m; pl.vx += (mx * sp - pl.vx) * Math.min(1, dt * 12); pl.vy += (my * sp - pl.vy) * Math.min(1, dt * 12); if (!(att && (pl.wp === 'soaker' || pl.wp === 'ext'))) pl.a += angDiff(pl.a, Math.atan2(my, mx)) * Math.min(1, dt * 14); pl.walk += dt * sp * .11; }
     else { pl.vx *= Math.exp(-12 * dt); pl.vy *= Math.exp(-12 * dt); }
     if (mouseDown && CAM.mouse) pl.a = Math.atan2(CAM.mouse.y - pl.y, CAM.mouse.x - pl.x);
     pl.x += pl.vx * dt; pl.y += pl.vy * dt; collideStatic(pl, 6.5);
     for (const v of actV) { if (Math.abs(v.x - pl.x) > 70 || Math.abs(v.y - pl.y) > 70) continue; for (const c of vehCircles(v)) { const dx = pl.x - c.x, dy = pl.y - c.y, d = Math.hypot(dx, dy), rr = c.r + 6.5; if (d < rr && d > 0) { pl.x += dx / d * (rr - d); pl.y += dy / d * (rr - d); } } }
+    if (TOUCH.att && !pl._att) touchAimAssist(pl);
     Combat.playerAttack(dt, att && !pl._att, att);
     Audio2.setEngine('none', 0);
   }

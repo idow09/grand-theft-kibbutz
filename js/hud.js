@@ -14,7 +14,7 @@ function star(x, y, r, col) { ctx.fillStyle = col; ctx.beginPath(); for (let i =
 
 function drawHUD(dt) {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-  const pad = 16, small = VW < 700;
+  const pad = 16, small = VW < 700, tch = TOUCH.on; TOUCH.phoneBox = null;
   // ---- money / health / wanted (top-right) ----
   T(`${G.money.toLocaleString('en-US')} ₪`, VW - pad, 30, small ? 26 : 34, '#ffd84a', 'right');
   if (G.comboT > 0 && G.mult > 1) T(`x${G.mult} קומבו`, VW - pad, 60, 16, '#ff9b4a', 'right');
@@ -32,13 +32,14 @@ function drawHUD(dt) {
   T(clockStr(), pad + 40, 34, 20, ENV.night > .5 ? '#9fb8ff' : '#fff', 'center', { dir: 'ltr' });
   T(WEATHERS[ENV.weather].name, pad + 108, 28, 11, '#cfe3ff', 'center'); T('יום ' + ENV.day, pad + 108, 44, 11, '#aab', 'center');
   // respect bars
-  let ry = 70;
+  let ry = tch ? TOUCH_RADAR.y + TOUCH_RADAR.r + 18 : 70;
   for (const k in FACT) { const r = G.respect[k]; T(FACT[k].n, pad + 140, ry, 11, FACT[k].c, 'right', { w: 600 }); ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(pad, ry - 3, 60, 6); ctx.fillStyle = r >= 0 ? FACT[k].c : '#ff4a4a'; ctx.fillRect(pad + 30, ry - 3, 30 * r / 100, 6); ry += 16; }
   T(`ביצי זהב ${Object.keys(G.eggs).length}/12`, pad + 140, ry + 2, 11, '#ffd84a', 'right', { w: 600 });
   // ---- weapon / vehicle (bottom-right) ----
   const wy = VH - pad - 30;
-  panel(VW - pad - 190, wy - 26, 190, 52, .55, 10);
-  if (Player.veh) {
+  if (!tch) panel(VW - pad - 190, wy - 26, 190, 52, .55, 10);
+  if (tch) { if (Player.veh) { const v = Player.veh; ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(VW / 2 - 50, VH - 12, 100, 5); ctx.fillStyle = v.dead ? '#888' : v.hp / v.d.hp > .4 ? '#9be26b' : '#ff7a4a'; ctx.fillRect(VW / 2 - 50, VH - 12, 100 * clamp(v.hp / v.d.hp, 0, 1), 5); } }
+  else if (Player.veh) {
     const v = Player.veh; T(v.d.name, VW - pad - 12, wy - 8, 18, '#fff', 'right');
     ctx.fillStyle = 'rgba(0,0,0,.5)'; ctx.fillRect(VW - pad - 178, wy + 8, 120, 7); ctx.fillStyle = v.dead ? '#888' : v.hp / v.d.hp > .4 ? '#9be26b' : '#ff7a4a'; ctx.fillRect(VW - pad - 178, wy + 8, 120 * clamp(v.hp / v.d.hp, 0, 1), 7);
     T(v.dead ? 'מקולקל' : 'מצב', VW - pad - 12, wy + 12, 11, '#aaa', 'right', { stroke: false });
@@ -50,8 +51,9 @@ function drawHUD(dt) {
     T(am, VW - pad - 12, wy + 13, 13, '#ffd84a', 'right');
   }
   // ---- radar (bottom-left) ----
-  drawRadar(pad + 92, VH - pad - 92, 86);
-  if (G.districtT > 0) { ctx.globalAlpha = Math.min(1, G.districtT); T(G.district, pad + 92, VH - pad - 196, 18, '#fff', 'center'); ctx.globalAlpha = 1; }
+  if (tch) { drawRadar(TOUCH_RADAR.x, TOUCH_RADAR.y, TOUCH_RADAR.r); if (G.districtT > 0) { ctx.globalAlpha = Math.min(1, G.districtT); T(G.district, VW / 2, VH - 40, 16, '#fff', 'center'); ctx.globalAlpha = 1; } }
+  else { drawRadar(pad + 92, VH - pad - 92, 86);
+  if (G.districtT > 0) { ctx.globalAlpha = Math.min(1, G.districtT); T(G.district, pad + 92, VH - pad - 196, 18, '#fff', 'center'); ctx.globalAlpha = 1; } }
   // ---- mission / rampage (top-center) ----
   let topY = 14;
   if (G.mission) {
@@ -77,17 +79,22 @@ function drawHUD(dt) {
   // ---- phone call ----
   if (G.phoneCall) {
     const c = G.phoneCall, w = Math.min(560, VW - 30), lines = wrap(c.text, w - 90, 15), h = 44 + lines.length * 21;
-    const x = VW / 2 - w / 2, y = VH - h - 140; ctx.globalAlpha = Math.min(1, c.life * 2);
+    const x = VW / 2 - w / 2, y = tch ? Math.max(70, VH - h - 110) : VH - h - 140; ctx.globalAlpha = Math.min(1, c.life * 2);
+    if (tch) TOUCH.phoneBox = { x, y, w, h };
     panel(x, y, w, h, .82, 12); ctx.fillStyle = c.col; ctx.fillRect(x + w - 6, y + 10, 3, h - 20);
     const ic = SPR.icon('phone'); ctx.drawImage(ic.cv, x + 14, y + 12, 34, 34);
     T(c.who, x + w - 18, y + 22, 16, c.col, 'right'); lines.forEach((l, i) => T(l, x + w - 18, y + 46 + i * 21, 15, '#f0f0f0', 'right', { w: 500, stroke: false }));
-    T('[Enter] סגירה', x + 60, y + h - 14, 11, '#888', 'center', { stroke: false }); ctx.globalAlpha = 1;
+    T(tch ? 'נגיעה לסגירה' : '[Enter] סגירה', x + 60, y + h - 14, 11, '#888', 'center', { stroke: false }); ctx.globalAlpha = 1;
   }
   // ---- shop menu ----
   if (G.shopMenu) {
-    const list = SHOP_ITEMS[G.shopMenu.kind] || [], w = 300, h = 40 + list.length * 26, x = VW / 2 - w / 2, y = VH * .58;
+    const list = SHOP_ITEMS[G.shopMenu.kind] || [], rh = tch ? 34 : 26, w = 300, h = 40 + list.length * rh, x = VW / 2 - w / 2, y = tch ? touchShopY(list.length) : VH * .58;
     panel(x, y, w, h, .82, 12); T(G.shopMenu.name, x + w - 16, y + 20, 16, '#9be26b', 'right');
-    list.forEach(([n, c], i) => { const afford = G.money >= c; T(`[${i + 1}]`, x + 26, y + 46 + i * 26, 13, '#ffd84a', 'center', { dir: 'ltr', stroke: false }); T(n, x + w - 16, y + 46 + i * 26, 14, afford ? '#fff' : '#777', 'right', { w: 500, stroke: false }); T(c ? c + ' ₪' : 'חינם', x + 80, y + 46 + i * 26, 13, afford ? '#ffd84a' : '#775', 'center', { stroke: false }); });
+    list.forEach(([n, c], i) => {
+      const afford = G.money >= c, ry2 = y + 46 + i * rh;
+      if (tch) { ctx.fillStyle = 'rgba(255,255,255,.07)'; ctx.beginPath(); ctx.roundRect(x + 8, ry2 - 14, w - 16, 28, 8); ctx.fill(); } else T(`[${i + 1}]`, x + 26, ry2, 13, '#ffd84a', 'center', { dir: 'ltr', stroke: false });
+      T(n, x + w - 16, ry2, 14, afford ? '#fff' : '#777', 'right', { w: 500, stroke: false }); T(c ? c + ' ₪' : 'חינם', x + (tch ? 50 : 80), ry2, 13, afford ? '#ffd84a' : '#775', 'center', { stroke: false });
+    });
   }
   // ---- faint/bust fade ----
   if (Player.out > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(.85, (3.6 - Player.out) * .6)})`; ctx.fillRect(0, 0, VW, VH); if (G.banner) { const b = G.banner; T(b.t, VW / 2, VH * .3, 46, b.col, 'center'); T(b.sub, VW / 2, VH * .3 + 44, 18, '#fff', 'center', { w: 500 }); } }
@@ -149,7 +156,7 @@ function drawMenu() {
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   const title = MENU.mode === 'title';
   const gr = ctx.createLinearGradient(0, 0, 0, VH); gr.addColorStop(0, 'rgba(10,12,20,.72)'); gr.addColorStop(.5, 'rgba(10,12,20,.35)'); gr.addColorStop(1, 'rgba(10,12,20,.85)'); ctx.fillStyle = gr; ctx.fillRect(0, 0, VW, VH);
-  const tz = Math.min(1, VW / 820);
+  const tz = Math.min(1, VW / 820, VH / 620);
   if (title || MENU.mode === 'pause') {
     ctx.save(); ctx.translate(VW / 2, VH * .2); ctx.scale(tz, tz); ctx.rotate(-.025);
     ctx.font = `900 58px ${FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.direction = 'ltr';
@@ -170,17 +177,22 @@ function drawMenu() {
     if (sel) { panel(VW / 2 - w / 2, y - 20, w, 40, .6, 20); ctx.fillStyle = '#ffd84a'; ctx.beginPath(); ctx.roundRect(VW / 2 + w / 2 - 8, y - 12, 4, 24, 2); ctx.fill(); }
     T(n, VW / 2, y, sel ? 24 : 20, sel ? '#ffd84a' : '#ddd', 'center');
   });
-  if (title) T('v2 · חיצים + Enter · או עכבר', VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
+  if (title) T(TOUCH.on ? 'v2 · נגיעה לבחירה' : 'v2 · חיצים + Enter · או עכבר', VW / 2, VH - 18, 12, '#888', 'center', { stroke: false, w: 400 });
 }
 function drawControls() {
-  const L = [
+  const L = TOUCH.on ? [
+    ['תנועה / נהיגה', 'ג׳ויסטיק משמאל'], ['ריצה', 'ג׳ויסטיק עד הסוף'], ['כניסה / יציאה / טלפון', 'כפתור ירוק'], ['תקיפה / ירי', 'כפתור אדום'], ['החלפת נשק', '⇄'],
+    ['בלם יד / צופר', 'בלם / 📯'], ['תחנת רדיו', '📻'], ['קנייה בחנות', 'נגיעה בפריט'], ['מפה', 'נגיעה במכ״ם'], ['השהיה', '❚❚'],
+  ] : [
     ['תנועה / נהיגה', 'WASD או חיצים'], ['ריצה', 'Shift'], ['כניסה / יציאה מרכב, טלפון', 'E'], ['תקיפה / ירי', 'J · Ctrl · עכבר'], ['החלפת נשק', 'Q / Tab'],
     ['בלם יד', 'Space'], ['צופר', 'H'], ['תחנת רדיו', 'R'], ['קנייה בחנות', '1 / 2 / 3'], ['מפה', 'M'], ['השהיה', 'Esc / P'],
   ];
-  const w = Math.min(560, VW - 40), x = VW / 2 - w / 2, y = VH * .14, h = 70 + L.length * 26 + 120;
+  const short = VH < 520, rh = short ? 21 : 26, top = short ? 50 : 70;
+  const w = Math.min(560, VW - 40), x = VW / 2 - w / 2, y = short ? 8 : VH * .14, h = top + L.length * rh + (short ? 10 : 120);
   panel(x, y, w, h, .82, 14);
-  T('איך משחקים', VW / 2, y + 30, 24, '#ffd84a', 'center');
-  L.forEach(([a, b], i) => { T(a, x + w - 24, y + 70 + i * 26, 15, '#fff', 'right', { w: 500, stroke: false }); T(b, x + 24, y + 70 + i * 26, 14, '#9fd8ff', 'left', { dir: 'ltr', stroke: false }); });
+  T('איך משחקים', VW / 2, y + (short ? 24 : 30), short ? 20 : 24, '#ffd84a', 'center');
+  L.forEach(([a, b], i) => { T(a, x + w - 24, y + top + i * rh, 15, '#fff', 'right', { w: 500, stroke: false }); T(b, x + 24, y + top + i * rh, 14, '#9fd8ff', 'left', { dir: TOUCH.on ? 'rtl' : 'ltr', stroke: false }); });
+  if (short) return;
   const tips = ['נסיעה על הדשא, מכות ובלגן מעצבנים את הזקנים. כל כוכב מביא רודפים רציניים יותר.', 'במוסכים (ריבוע צהוב במפה) מוחקים את הרוגז ומתקנים את הרכב.', 'טלפונים צבעוניים = משימות של שלוש הקבוצות. בסמלים הסגולים יש "בלגן" נגד השעון.'];
   let ty = y + 70 + L.length * 26 + 14;
   for (const t of tips) for (const l of wrap(t, w - 48, 13)) { T(l, x + w - 24, ty, 13, '#cfcfcf', 'right', { w: 500, stroke: false }); ty += 19; }

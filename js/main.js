@@ -51,7 +51,7 @@ let last = performance.now();
 function update(dt) {
   G.time += dt;
   envTick(dt);
-  if (introT >= 0) { introT += dt; for (const [t, s] of INTRO_TIPS) if (introT - dt < t && introT >= t) G.msg(s, '#cfe9ff'); if (introT > 40) introT = -1; }
+  if (introT >= 0) { introT += dt; for (const [t, s] of TOUCH.on ? TOUCH_INTRO : INTRO_TIPS) if (introT - dt < t && introT >= t) G.msg(s, '#cfe9ff'); if (introT > 40) introT = -1; }
   interactTick();
   playerTick(dt);
   entitiesTick(dt);
@@ -93,19 +93,24 @@ function frame(now) {
       const r = menuInput();
       if (r === 'new') newGame(); else if (r === 'continue') continueGame(); else if (r === 'controls') { MENU.mode = 'controls'; MENU.sel = 0; } else if (r === 'back') { MENU.mode = 'title'; MENU.sel = 0; }
     } else if (G.state === 'play') {
+      const rot = TOUCH.on && VH > VW;   // phone held upright: freeze until rotated
       if (P('Escape', 'KeyP')) { G.state = 'pause'; MENU.mode = 'pause'; MENU.sel = 0; }
       else if (P('KeyM')) { G.state = 'map'; }
-      else update(dt);
-      draw(dt); drawHUD(dt);
+      else if (!rot) update(dt);
+      draw(rot ? 0 : dt); drawHUD(dt); drawTouch();
+      if (rot) { G.time += dt; drawRotate(); }
     } else if (G.state === 'pause') {
       draw(0); drawHUD(0); drawMenu();
       if (MENU.mode === 'controls') { const r = menuInput(); if (r) { MENU.mode = 'pause'; MENU.sel = 0; } }
-      else { const r = menuInput(); if (r === 'resume') G.state = 'play'; else if (r === 'map') G.state = 'map'; else if (r === 'controls') { MENU.mode = 'controls'; MENU.sel = 0; } else if (r === 'new') newGame(); }
+      else { const r = menuInput(); if (r === 'resume') G.state = 'play'; else if (r === 'map') G.state = 'map';
+        else if (r === 'music' || r === 'sfx') { Audio2.vol[r] = Audio2.vol[r] >= .95 ? 0 : Math.round(Audio2.vol[r] * 10 + 2) / 10; Audio2.vol[r] = Math.min(1, Audio2.vol[r]); Audio2.applyVol(); Audio2.sfx('click'); } else if (r === 'controls') { MENU.mode = 'controls'; MENU.sel = 0; } else if (r === 'new') newGame(); }
       Audio2.radioTick(false);
     } else if (G.state === 'map') {
       draw(0); drawBigMap(); if (P('KeyM', 'Escape', 'Enter')) G.state = 'play'; Audio2.radioTick(false);
     }
   } catch (e) { console.error(e); if (!window.__errShown) { window.__errShown = 1; } }
+  // touch devices: drop render resolution once if frames are consistently slow
+  if (TOUCH.on && G.state === 'play' && !QUALITY.low) { QUALITY.acc += dt; QUALITY.n++; if (QUALITY.n >= 180) { if (QUALITY.acc / QUALITY.n > 1 / 40) { QUALITY.low = true; resize(); } QUALITY.acc = 0; QUALITY.n = 0; } }
   clearPressed();
   requestAnimationFrame(frame);
 }
