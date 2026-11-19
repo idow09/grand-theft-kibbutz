@@ -133,7 +133,9 @@ function drawBigMap() {
   for (const it of Pickups.items) if (it.alive && it.t === 'rampage') { const [X, Y] = at(it.x, it.y); ctx.fillStyle = '#c98bff'; ctx.beginPath(); ctx.arc(X, Y, 4, 0, TAU); ctx.fill(); }
   if (G.mission) for (const m of G.mission.markers()) if (m) { const [X, Y] = at(m.x, m.y); ctx.strokeStyle = '#ffe14a'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(X, Y, 8 + Math.sin(G.time * 5) * 2, 0, TAU); ctx.stroke(); }
   const P0 = Player.veh || Player, [X, Y] = at(P0.x, P0.y); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(X, Y, 6, 0, TAU); ctx.fill(); ctx.fillStyle = '#2f6fd0'; ctx.beginPath(); ctx.arc(X, Y, 4, 0, TAU); ctx.fill();
+  { const [hx, hy] = at(MAP.hub[0], MAP.hub[1]); ctx.strokeStyle = '#ffd84a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(hx, hy, 7, 0, TAU); ctx.stroke(); T('חדר האוכל', hx, hy - 15, 11, '#ffd84a', 'center'); }
   T('מפת הקיבוץ', VW / 2, 24, 22, '#ffd84a', 'center');
+  T('כל הדרכים מובילות לחדר האוכל', VW / 2, 46, 13, '#cfe9ff', 'center', { stroke: false });
   T('● טלפון משימות   ■ מוסך (מחיקת רוגז)   ₪ חנות   ● בלגן', VW / 2, VH - 16, 13, '#ccc', 'center', { w: 500 });
 }
 

@@ -44,7 +44,7 @@ function newGame() {
   startPlay(true);
 }
 function continueGame() { G.played = true; Save.load(); const p = POI['חדר האוכל']; Player.x = p.x + 20; Player.y = p.y + 40; CAM.x = Player.x; CAM.y = Player.y; startPlay(false); }
-const INTRO_TIPS = [[1.5, 'WASD / חיצים לתנועה · Shift לריצה'], [6, 'לחץ E ליד האופניים כדי לעלות עליהם'], [12, 'טלפונים צבעוניים = משימות · M = מפה'], [19, 'בשדות שמחוץ לקיבוץ מחכים טרקטורים... 🚜'], [27, 'זהירות מהדשא — הזקנים רואים הכל']];
+const INTRO_TIPS = [[1.5, 'WASD / חיצים לתנועה · Shift לריצה'], [6, 'לחץ E ליד האופניים כדי לעלות עליהם'], [12, 'טלפונים צבעוניים = משימות · M = מפה'], [19, 'בשדות שמחוץ לקיבוץ מחכים טרקטורים... 🚜'], [27, 'זהירות מהדשא — הזקנים רואים הכל'], [34, 'הלכת לאיבוד? כל הדרכים מובילות לחדר האוכל']];
 let introT = -1;
 function startPlay(fresh) {
   G.state = 'play'; Audio2.init(); G.time = G.time || 0;
