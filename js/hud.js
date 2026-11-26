@@ -155,7 +155,7 @@ function drawLogo(cx, top, maxW, maxH) {
 const MENU = { sel: 0, items: [], mode: 'title', anim: 0, links: [] };
 function menuItems() {
   const disc = [`⭐ שווה לנסות (${Discover.count()}/${Discover.FEATS.length})`, 'discover'], share = ['📤 שלחו לחבר', 'share'];
-  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], disc, ['איך משחקים', 'controls'], share, ['אודות', 'credits']].filter(Boolean);
+  if (MENU.mode === 'title') return [Save.has() ? ['המשך', 'continue'] : null, ['משחק חדש', 'new'], disc, ['איך משחקים', 'controls'], VH < 420 ? null : ['🔧 איך זה בנוי?', 'tour'], share, ['אודות', 'credits']].filter(Boolean);   // short phones: the tour stays reachable from About
   if (MENU.mode === 'pause') return [['חזרה למשחק', 'resume'], ['מפה', 'map'], disc, [`מוזיקה: ${Math.round(Audio2.vol.music * 10)}`, 'music'], [`צלילים: ${Math.round(Audio2.vol.sfx * 10)}`, 'sfx'], ['איך משחקים', 'controls'], share, ['אודות', 'credits'], ['משחק חדש', 'new']];
   if (MENU.mode === 'share') return [['וואטסאפ', 'wa'], ['העתקת קישור', 'copy'], ['חזרה', 'back']];
   return [['חזרה', 'back']];
@@ -181,6 +181,7 @@ const SUBPAGES = ['controls', 'credits', 'discover', 'share'];
 function menuNav(r) {
   if (r === 'controls' || r === 'credits' || r === 'discover') { MENU.mode = r; MENU.sel = 0; return true; }
   if (r === 'share') { startShare(); return true; }
+  if (r === 'tour') { openTour(); return true; }
   if (r === 'wa' || r === 'copy') { shareAct(r); return true; }
   if (r === 'back') { MENU.mode = G.state === 'pause' ? 'pause' : 'title'; MENU.sel = 0; return true; }
   return false;
@@ -250,14 +251,17 @@ function drawCredits() {
   const w = Math.min(600, VW - 32), x = VW / 2 - w / 2, short = VH < 560, y = short ? 14 : VH * .14;
   const bio = 'עדו וייס, קיבוצניק (כמעט) מלידה, אבל עד היום מרגיש סוג ב׳, כי ההורים היו תושבים, אז שילמתי על שירותים וכלליות בחדר האוכל. היום חבר קיבוץ גאה ואבא לשלוש קיבוצניקיות קטנות שנולדו פה, בקיבוץ סעד.';
   const lines = wrap(bio, w - 56, short ? 15 : 17), lh = short ? 21 : 26;
-  const h = (short ? 186 : 246) + lines.length * lh;
+  const pair = short && w > 420;   // short screens: GitHub and the tour share one row instead of adding one
+  const h = (short ? 186 : 246) + (pair ? 0 : short ? 24 : 32) + lines.length * lh;
   panel(x, y, w, h, .86, 16);
   T('GRAND THEFT KIBBUTZ', VW / 2, y + (short ? 26 : 36), short ? 17 : 21, '#9be26b', 'center', { dir: 'ltr', w: 800 });
   let yy = y + (short ? 58 : 76);
   for (const l of lines) { T(l, VW / 2, yy, short ? 15 : 17, '#eef3f6', 'center', { w: 500, stroke: false }); yy += lh; }
   yy += short ? 6 : 10; menuLink('✉️ hello@gtkibbutz.com', 'mailto:hello@gtkibbutz.com', VW / 2, yy, short ? 14 : 16);
   yy += short ? 24 : 32; T('קוד, גרפיקה וסאונד: Claude (Anthropic)', VW / 2, yy, short ? 12 : 13, '#8a96a0', 'center', { w: 500, stroke: false });
-  yy += short ? 26 : 36; menuLink('⭐ קוד פתוח ב-GitHub', GITHUB_URL, VW / 2, yy, short ? 14 : 16);
+  yy += short ? 26 : 36;
+  if (pair) { menuLink('⭐ קוד פתוח ב-GitHub', GITHUB_URL, VW / 2 + 92, yy, 14); menuLink('🔧 איך זה בנוי?', 'tour.html', VW / 2 - 92, yy, 14); }
+  else { menuLink('⭐ קוד פתוח ב-GitHub', GITHUB_URL, VW / 2, yy, short ? 14 : 16); yy += short ? 24 : 32; menuLink('🔧 איך זה בנוי? סיור במנגנונים', 'tour.html', VW / 2, yy, short ? 14 : 16); }
   yy += short ? 24 : 32; T('פרודיה של מעריצים. אין קשר ל-Rockstar Games או ל-Grand Theft Auto.', VW / 2, yy, short ? 11 : 12, '#8a96a0', 'center', { w: 500, stroke: false });
   yy += short ? 16 : 19; T('הקיבוץ והדמויות בדיוניים. כל דמיון לוותיק שאתם מכירים מקרי בהחלט.', VW / 2, yy, short ? 11 : 12, '#8a96a0', 'center', { w: 500, stroke: false });
   yy += short ? 18 : 24; T(GAME_VERSION, VW / 2, yy, short ? 11 : 12, '#5d6a74', 'center', { dir: 'ltr', stroke: false });
@@ -276,8 +280,12 @@ function menuLink(text, url, cx, cy, fs) {
   T(text, cx, cy, fs, hov ? '#c8f5a8' : '#9be26b', 'center', { stroke: false });
   MENU.links.push({ x: cx - w / 2, y: cy - h / 2, w, h, url });
 }
+// the interactive "how the game is built" walkthrough (tour.html). Opened from inside the game loop, so
+// there's no user gesture and a popup would be blocked: save, then go there in this tab; it links back.
+function openTour() { track('open-tour'); if (G.state === 'pause') Save.save(); location.href = 'tour.html'; }
 function openLink(url) {
-  if (url.startsWith('mailto:')) { location.href = url; return; }   // hands off to the mail app, the game stays put
+  if (url.startsWith('mailto:')) { location.href = url; return; }
+  if (url === 'tour.html') { openTour(); return; }   // hands off to the mail app, the game stays put
   // noopener makes window.open return null even on success, so only fall back when the popup was really blocked
   const w = window.open(url, '_blank'); if (w) w.opener = null; else location.href = url;
 }

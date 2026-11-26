@@ -1,0 +1,1831 @@
+<!doctype html>
+<html lang="he" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="איך בנוי Grand Theft Kibbutz: סיור אינטראקטיבי במנגנונים של המשחק"><style>:root{color-scheme:light dark}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+<title>GTK מאחורי הקלעים</title>
+<script>document.documentElement.setAttribute('dir', 'rtl'); document.documentElement.setAttribute('lang', 'he');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&family=Secular+One&display=swap">
+<style>
+/* Layout: a deck. One chapter per screen; text + pseudo-code on the start side, a live "game screen" on the other.
+   The game screens keep the game's own colours in both themes, like a monitor sitting on the page. */
+:root{
+  --bg:#ebe5d1; --surface:#f6f2e4; --surface-2:#e0d8bf; --ink:#24261e; --muted:#66654c; --line:#cfc5a6;
+  --accent:#9a6a00; --accent-strong:#f2c230; --accent-ink:#201a06; --accent-soft:rgba(242,194,48,.30);
+  --blue:#1b6fa6; --hot:#b8381f; --good:#3c7a2a;
+  --code-bg:#24271f; --code-ink:#ebe6d1; --code-com:#a8a58a; --code-kw:#f2c230; --code-num:#7cc6f0; --code-str:#b5de8a;
+  --screen:#1b1d17; --screen-ink:#ebe6d1;
+  --f-display:'Secular One','Heebo',system-ui,sans-serif;
+  --f-body:'Heebo',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,Consolas,'Courier New',monospace;
+  --step--1:.84rem; --step-0:1rem; --step-1:1.2rem; --step-2:1.55rem; --step-3:2.1rem; --step-4:2.9rem;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#151813; --surface:#1d2119; --surface-2:#282d22; --ink:#ebe5cf; --muted:#a29e84; --line:#343a2c;
+  --accent:#f2c230; --accent-strong:#f2c230; --accent-ink:#201a06; --accent-soft:rgba(242,194,48,.16);
+  --blue:#5cc0f2; --hot:#ff7356; --good:#8fd16b;
+  --code-bg:#10120e; --code-ink:#e6e1cc; --code-com:#8f8c74; --code-kw:#f2c230; --code-num:#7cc6f0; --code-str:#b5de8a;
+  --screen:#10120e; --screen-ink:#ebe6d1; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#151813; --surface:#1d2119; --surface-2:#282d22; --ink:#ebe5cf; --muted:#a29e84; --line:#343a2c;
+  --accent:#f2c230; --accent-strong:#f2c230; --accent-ink:#201a06; --accent-soft:rgba(242,194,48,.16);
+  --blue:#5cc0f2; --hot:#ff7356; --good:#8fd16b;
+  --code-bg:#10120e; --code-ink:#e6e1cc; --code-com:#8f8c74; --code-kw:#f2c230; --code-num:#7cc6f0; --code-str:#b5de8a;
+  --screen:#10120e; --screen-ink:#ebe6d1; color-scheme:dark}
+
+html,body{height:100%}
+body{direction:rtl;background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:var(--step-0);line-height:1.65;display:flex;flex-direction:column;overflow:hidden}
+*{box-sizing:border-box}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent-strong);outline-offset:2px}
+
+/* top bar */
+.top{flex:none;display:flex;align-items:center;gap:14px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);background:var(--surface)}
+.brand{font-family:var(--f-display);font-size:var(--step-1);line-height:1;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.brand i{font-style:normal;display:inline-grid;place-items:center;width:30px;height:30px;border-radius:7px;background:var(--accent-strong);color:var(--accent-ink);font-size:.95rem}
+.top .sp{flex:1}
+a.brand{color:inherit;text-decoration:none}
+.play{flex:none;white-space:nowrap;text-decoration:none;font-weight:700;font-size:var(--step--1);background:var(--accent-strong);color:var(--accent-ink);padding:6px 12px;border-radius:999px}
+.chap{display:flex;align-items:center;gap:8px;min-width:0}
+.chap label{font-size:var(--step--1);color:var(--muted);white-space:nowrap}
+.chap select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 10px;max-width:52vw}
+
+main{flex:1;min-height:0;position:relative}
+.slide{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding-block:26px 34px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));scroll-behavior:smooth}
+.wrap{max-width:1280px;margin:0 auto}
+.eyebrow{font-size:var(--step--1);letter-spacing:.06em;color:var(--accent);font-weight:700;margin:0 0 6px}
+h1,h2,h3{font-family:var(--f-display);font-weight:400;line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:var(--step-4)}
+h2{font-size:var(--step-3);margin-bottom:12px}
+h3{font-size:var(--step-1);margin:22px 0 8px}
+p{margin:0 0 12px;max-width:62ch}
+.lead{font-size:var(--step-1);line-height:1.55;color:var(--ink);max-width:56ch}
+.muted{color:var(--muted)}
+ul.pts{margin:0 0 12px;padding-inline-start:20px;max-width:62ch}
+ul.pts li{margin-bottom:6px}
+code,.mono{font-family:var(--f-mono);font-size:.86em;direction:ltr;unicode-bidi:isolate}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px}
+
+.cols{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:34px;align-items:start}
+.text{min-width:0}
+.demo{min-width:0;position:sticky;top:0;display:flex;flex-direction:column;gap:12px}
+@media (max-width:920px){.cols{grid-template-columns:minmax(0,1fr);gap:22px}.demo{position:static}}
+
+/* pseudo-code */
+pre.code{direction:ltr;text-align:left;background:var(--code-bg);color:var(--code-ink);font-family:var(--f-mono);font-size:.8rem;line-height:1.6;padding:14px 16px;border-radius:10px;overflow-x:auto;margin:6px 0 14px;tab-size:4}
+pre.code .c{color:var(--code-com)}
+pre.code .k{color:var(--code-kw)}
+pre.code .n{color:var(--code-num)}
+pre.code .s{color:var(--code-str)}
+pre.code bdi{font-family:var(--f-body);font-size:.95em}
+
+.note{border-inline-start:3px solid var(--accent-strong);background:var(--accent-soft);padding:10px 14px;border-radius:0 8px 8px 0;margin:8px 0 14px;max-width:62ch}
+.note strong{font-weight:700}
+
+/* game screen */
+.screen{position:relative;border-radius:10px;overflow:hidden;background:var(--screen);box-shadow:0 0 0 1px var(--line),0 10px 30px -18px rgba(0,0,0,.45)}
+.screen canvas{display:block;width:100%;aspect-ratio:16/10;touch-action:pan-y}
+.screen canvas.drag{touch-action:none;cursor:crosshair}
+.screen canvas.r167{aspect-ratio:16/7}
+.screen canvas.r43{aspect-ratio:4/3}
+.screen canvas.r169{aspect-ratio:16/9}
+.hud{position:absolute;top:8px;inset-inline-start:8px;max-width:calc(100% - 16px);background:rgba(16,18,14,.78);color:var(--screen-ink);font-size:.78rem;line-height:1.45;padding:6px 9px;border-radius:7px;pointer-events:none;font-variant-numeric:tabular-nums}
+.hud b{color:#f2c230;font-weight:600}
+.hud .bad{color:#ff8a6b}.hud .ok{color:#9be26b}
+.toast{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(16,18,14,.86);color:#f2c230;font-weight:700;padding:5px 14px;border-radius:999px;font-size:.9rem;pointer-events:none;opacity:0;transition:opacity .2s;max-width:92%;text-align:center;line-height:1.35}
+.toast.on{opacity:1}
+.cap{font-size:var(--step--1);color:var(--muted);margin:0}
+
+/* controls */
+.ctl{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center;font-size:.9rem}
+.ctl label{display:flex;align-items:center;gap:8px}
+.ctl input[type=range]{width:140px;accent-color:#c99a10}
+.ctl output{font-family:var(--f-mono);font-size:.8rem;color:var(--muted);min-width:3.4em;display:inline-block}
+.btn{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer;line-height:1.3}
+.btn:hover{border-color:var(--accent)}
+.btn.pri{background:var(--accent-strong);color:var(--accent-ink);border-color:transparent;font-weight:700}
+.btn.hot{color:var(--hot)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-wrap:wrap}
+.seg button{background:var(--surface);border:0;border-inline-end:1px solid var(--line);padding:6px 11px;cursor:pointer}
+.seg button:last-child{border-inline-end:0}
+.seg button[aria-pressed="true"]{background:var(--accent-strong);color:var(--accent-ink);font-weight:700}
+.kbd{font-family:var(--f-mono);font-size:.75rem;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--surface)}
+
+/* touch pad for driving demos */
+.pad{display:none;gap:8px;justify-content:space-between;user-select:none;-webkit-user-select:none}
+.pad .grp{display:flex;gap:8px}
+.pad button{width:56px;height:48px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:1.15rem;touch-action:none}
+.pad button.on{background:var(--accent-strong);color:var(--accent-ink)}
+@media (pointer:coarse){.pad{display:flex}}
+
+/* intro */
+.hero{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:34px;align-items:center;margin-bottom:26px}
+@media (max-width:920px){.hero{grid-template-columns:minmax(0,1fr)}}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.stats div{background:var(--surface);padding:12px 14px}
+.stats b{display:block;font-family:var(--f-display);font-size:var(--step-2);line-height:1.1;font-weight:400;font-variant-numeric:tabular-nums}
+.stats span{font-size:var(--step--1);color:var(--muted)}
+@media (max-width:520px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.toc{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;list-style:none;padding:0;margin:8px 0 0}
+.toc a{display:flex;gap:10px;align-items:baseline;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:10px 12px;height:100%}
+.toc a:hover{border-color:var(--accent)}
+.toc .no{font-family:var(--f-mono);font-size:.78rem;color:var(--accent);min-width:1.6em}
+.toc .t{font-weight:700;display:block;line-height:1.3}
+.toc .d{font-size:var(--step--1);color:var(--muted);display:block;line-height:1.4;margin-top:2px}
+
+/* phases list */
+ol.phases{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:4px 10px;font-size:.82rem}
+ol.phases li{padding:4px 8px;border-radius:6px;border:1px solid transparent;transition:background .15s}
+ol.phases li code{background:none;padding:0;color:var(--accent);font-size:.78rem}
+ol.phases li.on{background:var(--accent-soft);border-color:var(--accent-strong)}
+@media (max-width:520px){ol.phases{grid-template-columns:minmax(0,1fr)}}
+
+/* tables */
+.tbl{overflow-x:auto;margin:4px 0 14px}
+table{border-collapse:collapse;font-size:.88rem;min-width:100%}
+th,td{text-align:start;padding:6px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-weight:700;color:var(--muted);font-size:.8rem}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+/* state machine */
+.sm svg{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.sm .node rect{fill:var(--bg);stroke:var(--line);stroke-width:1.5}
+.sm .node text{fill:var(--ink);font-family:var(--f-body);font-size:15px;font-weight:700}
+.sm .node.on rect{fill:var(--accent-strong);stroke:var(--accent-strong)}
+.sm .node.on text{fill:var(--accent-ink)}
+.sm .edge{fill:none;stroke:var(--line);stroke-width:2}
+.sm .edge.on{stroke:var(--accent-strong);stroke-width:3.5}
+.log{list-style:none;margin:0;padding:0;font-size:.85rem;min-height:6.6em}
+.log li{padding:2px 0;border-bottom:1px dashed var(--line)}
+.log li:first-child{font-weight:700}
+.pips{display:inline-flex;gap:3px;vertical-align:middle}
+.pips i{width:16px;height:9px;border-radius:2px;background:var(--good);display:inline-block}
+.pips i.off{background:var(--surface-2)}
+
+/* heat */
+.heat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:14px}
+.stars{display:flex;gap:6px;font-size:2rem;line-height:1;direction:ltr;justify-content:flex-end}
+.stars span{color:var(--surface-2);transition:color .2s,transform .2s}
+.stars span.on{color:var(--accent-strong);transform:scale(1.08)}
+.bar{position:relative;height:16px;background:var(--surface-2);border-radius:8px;overflow:visible;direction:ltr}
+.bar .fill{position:absolute;inset:0 auto 0 0;background:linear-gradient(90deg,var(--accent-strong),var(--hot));border-radius:8px;width:0}
+.bar .tick{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);opacity:.35}
+.bar .tick span{position:absolute;top:20px;transform:translateX(-50%);font-size:.68rem;font-family:var(--f-mono);white-space:nowrap}
+.hrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline;font-variant-numeric:tabular-nums}
+.hmsg{font-family:var(--f-display);font-size:var(--step-1);min-height:1.3em;color:var(--hot)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-height:30px}
+.chip{font-size:.8rem;padding:3px 9px;border-radius:999px;background:var(--surface-2);border:1px solid var(--line)}
+.chip.v{background:var(--accent-soft);border-color:var(--accent-strong)}
+.crimes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+.crimes .btn{text-align:start;display:flex;justify-content:space-between;gap:8px;font-size:.86rem}
+.crimes .btn span{font-family:var(--f-mono);color:var(--hot);font-size:.78rem}
+.gbar{height:8px;background:var(--surface-2);border-radius:4px;overflow:hidden;direction:ltr}
+.gbar div{height:100%;width:0;background:var(--hot)}
+
+/* combat result */
+.res{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.res div{background:var(--surface);padding:9px 12px}
+.res span{display:block;font-size:.76rem;color:var(--muted)}
+.res b{font-weight:700}
+
+/* engine compare */
+.cmp{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:8px}
+@media (max-width:820px){.cmp{grid-template-columns:minmax(0,1fr)}}
+.cmp section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.cmp h3{margin-top:0;display:flex;align-items:center;gap:10px}
+.tag{font-family:var(--f-body);font-size:.74rem;font-weight:700;padding:2px 8px;border-radius:999px}
+.tag.gen{background:rgba(143,209,107,.25);color:var(--good)}
+.tag.bou{background:var(--accent-soft);color:var(--accent)}
+.cmp ul{margin:0;padding-inline-start:18px}
+.cmp li{margin-bottom:9px}
+.cmp li b{display:block}
+.engine{margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+@media (max-width:640px){.two{grid-template-columns:minmax(0,1fr)}}
+
+.chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 14px}
+.chain span{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:4px 10px;font-size:.88rem}
+.chain i{font-style:normal;color:var(--accent)}
+
+/* footer nav */
+.foot{flex:none;display:flex;align-items:center;gap:12px;padding-block:8px calc(8px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-top:1px solid var(--line);background:var(--surface)}
+.dots{flex:1;display:flex;justify-content:center;gap:5px;flex-wrap:wrap;min-width:0}
+.dots button{width:9px;height:9px;border-radius:50%;border:0;padding:0;background:var(--surface-2);cursor:pointer}
+.dots button[aria-current="true"]{background:var(--accent-strong);transform:scale(1.25)}
+.navb{min-width:92px}
+.hint{font-size:.74rem;color:var(--muted);white-space:nowrap}
+@media (max-width:640px){.hint{display:none}.navb{min-width:0}.brand span{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+</style>
+
+<header class="top">
+  <a class="brand" href="./" title="חזרה למשחק"><i>GTK</i><span>מאחורי הקלעים</span></a>
+  <div class="sp"></div>
+  <a class="play" href="./">🎮 לשחק</a>
+  <div class="chap"><label for="chapSel">פרק</label><select id="chapSel"></select></div>
+</header>
+
+<main id="deck">
+
+<!-- 1 ============================================================ -->
+<section class="slide" data-key="intro" data-title="פתיחה">
+<div class="wrap">
+  <div class="hero">
+    <div>
+      <p class="eyebrow">סיור טכני במשחק</p>
+      <h1>גרנד תאפט קיבוץ, מבפנים</h1>
+      <p class="lead" style="margin-top:14px">משחק הוא לולאה שרצה 60 פעם בשנייה: קוראת קלט, מזיזה את העולם קצת, ומציירת אותו מחדש. כל השאר זה פרטים. כאן הפרטים, מנגנון אחרי מנגנון, עם הדגמה חיה שמריצה את הנוסחאות האמיתיות מהקוד.</p>
+      <p class="muted">אין פה Unity, Godot או Phaser. כל מה שמנוע היה נותן (פיזיקה, ציור, סאונד, מצלמה) נכתב ביד ב-JavaScript רגיל על Canvas. בגלל זה אפשר לראות כל מנגנון עד הסוף.</p>
+    </div>
+    <div class="stats" aria-label="המשחק במספרים">
+      <div><b>4,851</b><span>שורות JavaScript</span></div>
+      <div><b>18</b><span>קבצי קוד</span></div>
+      <div><b>0</b><span>מנועים וספריות</span></div>
+      <div><b>0</b><span>קבצי סאונד. הכל מסונתז</span></div>
+      <div><b>3</b><span>תמונות: לוגו, אייקון, שיתוף</span></div>
+      <div><b><bdi dir="ltr">6,400×4,800</bdi></b><span>יחידות עולם במפה</span></div>
+    </div>
+  </div>
+  <h3>הפרקים</h3>
+  <ol class="toc" id="toc"></ol>
+  <p class="muted" style="margin-top:16px">ניווט: הכפתורים למטה, הנקודות, או <span class="kbd">←</span> <span class="kbd">→</span>. בפרקים עם נהיגה החיצים נוהגים, ואז <span class="kbd">PageDown</span> <span class="kbd">PageUp</span> מחליפים פרק.</p>
+</div>
+</section>
+
+<!-- 2 ============================================================ -->
+<section class="slide" data-key="loop" data-title="לולאת המשחק" data-desc="frame, dt, ולמה יש תקרה">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 2</p>
+    <h2>לולאת המשחק</h2>
+    <p>הדפדפן קורא לפונקציה <code>frame</code> בכל פעם שהמסך מוכן לתמונה חדשה (<code>requestAnimationFrame</code>). בדרך כלל זה 60 פעם בשנייה, במסך של 120Hz פי שניים. בכל קריאה: כמה זמן עבר, לעדכן את העולם, לצייר אותו.</p>
+<pre class="code">function frame(now):
+    dt = (now - last) / 1000        // שניות מאז הפריים הקודם
+    dt = clamp(dt, 0, 0.05)         // תקרה: אף פעם לא יותר מ-50ms
+    switch state:                    // loading / title / play / pause / map
+        case 'play':
+            update(dt)               // הסימולציה: הכל זז קצת
+            draw()                   // הציור: הכל מצויר מאפס
+            drawHUD(); drawTouch()   // ממשק מעל העולם
+    clearPressed()                   // "נלחץ בפריים הזה" מתאפס
+    requestAnimationFrame(frame)     // תקרא לי שוב בפריים הבא</pre>
+    <div class="note"><strong>למה להכפיל ב-dt?</strong> מחשבים שונים מציירים בקצב שונה. אם כל תנועה מוכפלת ב-dt, מכונית במהירות 120 יחידות לשנייה עוברת 120 יחידות בשנייה גם ב-30 פריימים וגם ב-144. ולמה תקרה? אם הטאב נתקע לשנייה, dt בלי תקרה היה מזיז הכל שנייה קדימה בצעד אחד, ומכוניות היו עוברות דרך קירות. עם התקרה המשחק פשוט מאט לרגע.</div>
+    <p>גם מסך הטעינה הוא חלק מהלולאה: 9 שלבי בנייה (טקסטורות, מפה, כבישים, אנשים...) רצים אחד בכל פריים, כדי שפס הטעינה יתעדכן בין שלב לשלב במקום שהדף ייתקע.</p>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvLoop" class="r167" aria-label="שלוש מכוניות על מסלול, בקצב פריימים משתנה"></canvas></div>
+    <div class="ctl"><label for="fpsR">קצב פריימים</label><input id="fpsR" type="range" min="4" max="144" value="60"><output id="fpsOut"></output></div>
+    <p class="cap">גרור את הקצב למטה. האדומה זזה צעד קבוע בכל פריים, אז היא מאטה ומאיצה עם הקצב. הכחולה מוכפלת ב-dt: תמיד באותה מהירות, אבל מתחת ל-20 פריימים היא קופצת. הצהובה היא המשחק: מוכפלת ב-dt עם תקרה, אז בקצב נמוך היא מאטה במקום לקפוץ.</p>
+    <h3 style="margin:6px 0 0">מה קורה בתוך update(dt), לפי הסדר</h3>
+    <ol class="phases" id="phases">
+      <li><code>envTick</code> שעון יום ולילה, מזג אוויר</li>
+      <li><code>introTips</code> טיפים בדקה הראשונה</li>
+      <li><code>interactTick</code> מה אפשר ללחוץ עליו לידך (E)</li>
+      <li><code>playerTick</code> קלט ← תנועת השחקן או הרכב</li>
+      <li><code>entitiesTick</code> רכבים, אנשים, חיות, אוכלוסייה</li>
+      <li><code>Farm.tick</code> טרקטורים, גרירה, מטוס ריסוס</li>
+      <li><code>Combat · FX · Pickups</code> קליעים, חלקיקים, איסוף</li>
+      <li><code>wantedTick</code> רוגז ורודפים, מוסך, "שווה לנסות"</li>
+      <li><code>Missions · Rampage</code> משימות והשתוללויות</li>
+      <li><code>camTick</code> המצלמה רודפת אחרי השחקן</li>
+      <li><code>UI · audio</code> הודעות, רדיו, שמירה כל 60 שניות</li>
+      <li><code>draw()</code> קרקע, צללים, רכבים, אנשים, בניינים, תאורה</li>
+    </ol>
+    <div class="ctl"><button class="btn" id="slowBtn">הצג פריים אחד בהילוך איטי</button><span class="cap">בפועל כל זה קורה תוך פחות מ-16 אלפיות שנייה.</span></div>
+  </div>
+</div></div>
+</section>
+
+<!-- 3 ============================================================ -->
+<section class="slide" data-key="camera" data-drive="1" data-title="המצלמה" data-desc="רודפת, מסתכלת קדימה, מתרחקת במהירות">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 3</p>
+    <h2>המצלמה</h2>
+    <p>המצלמה היא שלושה מספרים: x, y וזום. היא לא נצמדת לשחקן. בכל פריים היא סוגרת חלק קבוע מהמרחק אליו. זו החלקה אקספוננציאלית, ומשם מגיעה התחושה הרכה של התנועה.</p>
+<pre class="code">target = car.pos + car.velocity * lookAhead   // לאן שנוסעים, לא איפה שעומדים
+cam.pos  += (target - cam.pos) * min(1, dt * 4.5)
+zoomGoal  = 1.02 - min(0.36, speed / 650)     // מהר יותר = רואים יותר
+cam.zoom += (zoomGoal - cam.zoom) * min(1, dt * 1.8)
+shakeOffset = random() * G.shake              // רעידה במכה
+G.shake *= exp(-7 * dt)                       // ודועכת לבד</pre>
+    <p>הנוסחה <code>x += (target - x) * dt * k</code> מופיעה במשחק עשרות פעמים: במצלמה, בהיגוי, באנשים שמסתובבים, בזום. היא זולה, יציבה, ונראית טבעית.</p>
+    <ul class="pts">
+      <li><b>lookAhead</b>: ‏0.15 שנייה ברגל, 0.42 ברכב, 0.9 במטוס. ככה רואים מה מגיע ולא את מה שכבר עברת.</li>
+      <li>במטוס הזום תלוי גם בגובה: <code>0.95 - alt * 0.28</code>. ככל שעולים, רואים יותר מפה.</li>
+      <li>הזום מחושב מגודל המסך, כך שטלפון לרוחב וצג רחב רואים בערך אותו שטח.</li>
+    </ul>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvCam" aria-label="מכונית נוסעת בשכונה והמצלמה רודפת אחריה"></canvas><div class="hud" id="camHud"></div></div>
+    <div class="ctl">
+      <label for="camK">היענות</label><input id="camK" type="range" min="0.5" max="20" step="0.5" value="4.5"><output id="camKo"></output>
+      <label for="camLA">מבט קדימה</label><input id="camLA" type="range" min="0" max="1.2" step="0.02" value="0.42"><output id="camLAo"></output>
+    </div>
+    <div class="ctl">
+      <label><input type="checkbox" id="camZoom" checked> זום לפי מהירות</label>
+      <label><input type="checkbox" id="camManual"> אני נוהג (<span class="kbd">↑↓←→</span>)</label>
+      <button class="btn" id="camShake">מכה! (רעידה)</button>
+    </div>
+    <div class="pad" data-for="camera"><div class="grp"><button data-k="ArrowRight" aria-label="ימינה">▶</button><button data-k="ArrowLeft" aria-label="שמאלה">◀</button></div><div class="grp"><button data-k="ArrowDown" aria-label="אחורה">▼</button><button data-k="ArrowUp" aria-label="גז">▲</button></div></div>
+    <p class="cap">העיגול הצהוב הוא נקודת המטרה (הרכב + מהירות × מבט קדימה), והצלב הוא מרכז המצלמה. נסה היענות 20: המצלמה נצמדת ומרגישה נוקשה. נסה 1: היא מאחרת.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 4 ============================================================ -->
+<section class="slide" data-key="world" data-title="העולם כנתונים" data-desc="רסטר חומרים, גריד מרחבי, גרף כבישים">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 4</p>
+    <h2>העולם כנתונים</h2>
+    <p>לשאלות "על מה אני עומד?" ו"במה אני עלול להיתקע?" יש שני מבנים שונים, כי הן נשאלות אלפי פעמים בשנייה וצריכות להיות זולות.</p>
+    <h3>רסטר חומרים</h3>
+    <p>כל המפה מחולקת לתאים של 8×8 יחידות: ‏480,000 תאים במערך בתים אחד. כל תא הוא מספר (דשא, כביש, חול, מים, חיטה...), ולכל חומר יש שורה בטבלה: אחיזה, גרר, האם זה דשא (עבירה!), האם זה מים (המנוע מוצף).</p>
+<pre class="code">matAt(x, y) = mat[floor(y / 8) * 800 + floor(x / 8)]   // חיבור וכפל. O(1)
+MINFO[GRASS] = { grip: 0.8, drag: 0.86, lawn: true }
+MINFO[SAND]  = { grip: 0.6, drag: 0.55 }
+MINFO[WATER] = { grip: 0.4, drag: 0.25, water: true }</pre>
+    <h3>גריד מרחבי</h3>
+    <p>בניינים נשמרים בתאים של 160 יחידות, חפצים (עצים, גדרות, ספסלים) בתאים של 128. כדי לדעת במה רכב נתקע, בודקים רק את התאים שהוא נוגע בהם, במקום לעבור על כל האובייקטים במפה.</p>
+<pre class="code">grid.query(box) -> רק מה שבתאים שהקופסה נוגעת בהם
+for obj in grid.query(around car): test(obj)   // 5 בדיקות במקום 1,000</pre>
+    <h3>גרף כבישים</h3>
+    <p>כל כביש הוא רשימת נקודות. הנקודות הופכות לצמתים, וקצוות כבישים נצמדים לצומת קרוב (עד 60 יחידות). על הגרף הזה נוסעים כל הנהגים במשחק (פרק 11).</p>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvWorld" class="drag" aria-label="מפת חומרים עם אובייקטים וגריד מרחבי"></canvas><div class="hud" id="worldHud"></div></div>
+    <div class="ctl"><label><input type="checkbox" id="worldNoGrid"> בלי גריד (בודקים את כל האובייקטים)</label></div>
+    <p class="cap">הזז את העכבר או האצבע על המפה. העיגול הכחול הוא "רכב". התאים הצהובים הם מה שנבדק, האובייקטים המסומנים הם המועמדים, והאדומים הם התנגשות אמיתית. הקרקע מאחור היא הרסטר עצמו, ברזולוציה של תא אחד לכל 8 יחידות.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 5 ============================================================ -->
+<section class="slide" data-key="collide" data-title="התנגשויות" data-desc="עיגולים, מלבנים, ולדחוף החוצה">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 5</p>
+    <h2>התנגשויות: לדחוף החוצה</h2>
+    <p>אין פה מנוע פיזיקה. יש פונקציה אחת, <code>shapePush</code>: מקבלת עיגול וצורה (עיגול או מלבן מסובב) ומחזירה כיוון ועומק חדירה. דוחפים את העיגול החוצה בדיוק בעומק הזה, וזהו.</p>
+    <p>רכב הוא שרשרת של עיגולים לאורכו: מכונית 2, מכלית חלב 3. עיגולים כי הבדיקה שלהם הכי פשוטה, ושרשרת כי רכב ארוך הוא לא עיגול.</p>
+<pre class="code">for circle in vehicle.circles:
+    for b in bgrid.query(near circle):        // רק בניינים קרובים
+        hit = shapePush(b, circle)            // { normal, depth } או null
+        if hit:
+            vehicle.pos += hit.normal * hit.depth
+
+vn = dot(vehicle.velocity, normal)
+if vn &lt; 0:                                    // נסענו לתוך הקיר
+    vehicle.velocity -= normal * vn * 1.3     // מבטלים ומקפיצים קצת אחורה
+    impact(vehicle, -vn)                      // מעל 80: נזק. מעל 120: "בום"</pre>
+    <p><b>מלבן מסובב</b> נבדק בטריק קלאסי: מסובבים את מרכז העיגול למערכת הצירים של המלבן, ושם המלבן ישר. הנקודה הכי קרובה היא clamp פשוט, והמרחק אליה הוא החדירה.</p>
+    <div class="note"><strong>חפצים נשברים לפי טבלה.</strong> לכל חפץ יש <code>need</code> ולכל רכב <code>power</code>. אם <code>power ≥ need</code> והמהירות מספיקה, החפץ נשבר במקום לחסום. טרקטור (4) מפיל עצים, אופניים (0) נעצרים בגדר. אין פה שורת קוד לכל צירוף: כלל אחד וטבלת מספרים.</div>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvCol" class="drag" aria-label="מכלית חלב מנסה לעבור דרך בניינים ונדחפת החוצה"></canvas><div class="hud" id="colHud"></div></div>
+    <div class="ctl"><label><input type="checkbox" id="colOff"> כבה את פתרון ההתנגשויות</label></div>
+    <p class="cap">הזז את העכבר או האצבע. המכלית נוסעת לעברו ומנסה לעבור דרך הבניינים והעצים. החיצים האדומים הם הדחיפה (כיוון × עומק, מוגדל פי 3 שיהיה אפשר לראות). כשאין יד על המסך, היא נוסעת לבד בין נקודות.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 6 ============================================================ -->
+<section class="slide" data-key="drive" data-drive="1" data-title="פיזיקת רכב" data-desc="קדימה, הצידה, ולמה זה מחליק">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 6</p>
+    <h2>פיזיקת רכב: למה זה מחליק</h2>
+    <p>הטריק של משחקי נהיגה מלמעלה: מפרקים את המהירות לשני רכיבים ביחס לכיוון הרכב. קדימה (<code>vf</code>) והצידה (<code>vl</code>). מנוע ובלמים משפיעים רק על קדימה. האחיזה "אוכלת" את הצידה. כשהאחיזה נמוכה (חול, בוץ, בלם יד), הרכיב הצידי שורד, והרכב מחליק.</p>
+<pre class="code">vf = dot(v, forward);   vl = dot(v, side)
+grip = car.grip * ground.grip            // כביש 1, חול 0.6, בוץ 0.55
+maxF = car.maxSpeed * ground.drag        // בחול אי אפשר להגיע למהירות מלאה
+if gas:   vf += acc * dt * (1 - vf / maxF)
+vl *= exp(-grip * (handbrake ? 0.18 : 1) * dt)   // האחיזה מחסלת החלקה
+angle += steer * turn * dt * clamp(vf / 70, -1, 1)  // בעמידה לא מסתובבים
+v = forward * vf + side * vl
+if |vl| > 55 and |vf| > 50: skidMark()           // סימן צמיגים נצבע לקרקע</pre>
+    <ul class="pts">
+      <li>כל כלי הוא שורה בטבלה: מכונית מאיצה ב-270, טרקטור ב-150 עם אחיזה 12. אופניים מסתובבים ב-2.8, קומביין ב-1.15.</li>
+      <li><code>off</code> אומר כמה הכלי אדיש לשטח: לטרקטור 1 (חול? לא מעניין אותו), למכונית 0.1.</li>
+      <li>במים: אחרי 1.2 שניות המנוע מוצף. טרקטור עובר.</li>
+    </ul>
+    <div class="note"><strong>אותה בדיקה, שלוש מערכות.</strong> ה-<code>matAt</code> שקובע אחיזה גם מגלה שנסעת על דשא (רוגז: 0.32 לשנייה, פי 1.8 בכלי כבד), גם מגלה מים, וגם הופך שדה חיטה לאדמה כשדורסים אותו.</div>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvDrive" aria-label="מגרש נהיגה עם כביש, דשא, חול, בוץ ובריכה"></canvas><div class="hud" id="drvHud"></div><div class="toast" id="drvToast"></div></div>
+    <div class="ctl">
+      <div class="seg" id="drvVeh" role="group" aria-label="כלי רכב"><button data-v="car" aria-pressed="true">מכונית</button><button data-v="tractor" aria-pressed="false">טרקטור</button><button data-v="kalnoit" aria-pressed="false">קלנועית</button><button data-v="bike" aria-pressed="false">אופניים</button></div>
+      <button class="btn" id="drvReset">איפוס</button>
+    </div>
+    <div class="pad" data-for="drive"><div class="grp"><button data-k="ArrowRight" aria-label="ימינה">▶</button><button data-k="ArrowLeft" aria-label="שמאלה">◀</button></div><div class="grp"><button data-k="Space" aria-label="בלם יד">✋</button><button data-k="ArrowDown" aria-label="ברקס">▼</button><button data-k="ArrowUp" aria-label="גז">▲</button></div></div>
+    <p class="cap"><span class="kbd">↑</span> גז, <span class="kbd">↓</span> ברקס ורוורס, <span class="kbd">←→</span> היגוי, <span class="kbd">רווח</span> בלם יד. החץ הירוק הוא vf והאדום הוא vl. בלם יד בפנייה = דריפט. נסה את החול עם מכונית ואז עם טרקטור.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 7 ============================================================ -->
+<section class="slide" data-key="plane" data-drive="1" data-title="המטוס" data-desc="גובה הוא רק מספר. ומה עם בניינים?">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 7</p>
+    <h2>המטוס: גובה הוא רק מספר</h2>
+    <p>אין במשחק ציר Z. למטוס יש שדה אחד, <code>alt</code>, בין 0 ל-1. פיזיקת הטיסה היא כמה שורות: מעל 215 הוא עולה, מתחת הוא שוקע, וכשהגובה מגיע ל-0 זו נחיתה.</p>
+<pre class="code">on ground:                                  // כמו רכב רגיל
+    if speed > 235 and gas: alt = 0.02      // "המראה!"
+in air:
+    goal = gas ? 440 : brake ? 150 : 290
+    speed += (goal - speed) * dt * 0.45     // המהירות נמשכת ליעד
+    if speed > 215: alt += 0.5 * dt         // עולה
+    else: alt -= ((215 - speed) / 215 * 1.4 + 0.12) * dt
+    if alt &lt;= 0: touchdown()</pre>
+    <p>פרט נחמד שיצא מהנוסחה ולא תוכנן: על אדמה יבשה הגרר מגביל את המהירות ל-234, אז משדה אי אפשר להמריא. צריך מסלול.</p>
+    <h3>אז מה מונע ממנו לנחות על בניין?</h3>
+    <p>חצי ידני, חצי בחינם. בקוד יש שלושה חלקים:</p>
+    <ul class="pts">
+      <li><b>באוויר הוא פשוט לא נבדק.</b> <code>if (alt > 0.05) skip</code> מדלג על בניינים, על רכבים אחרים ועל הולכי רגל. ככה הוא עף מעל הכל. זו שורה ידנית.</li>
+      <li><b>מתחת ל-0.05 הוא "בגובה הקרקע".</b> מערכת ההתנגשויות הכללית מפרק 5 חוזרת לפעול. אם הוא מנמיך לתוך בניין, הוא נהדף לקיר הקרוב ומקבל מכה, בדיוק כמו מכונית שנוסעת לקיר. את זה קיבלנו בחינם.</li>
+      <li><b>וברגע הנגיעה יש בדיקה מפורשת:</b> בניין מתחת לגלגלים, או מהירות מעל 300, נותנים "נחיתה קשה!" ונזק של 90 ומעלה.</li>
+    </ul>
+    <div class="note"><strong>מה גילינו כשבנינו את ההדגמה הזו:</strong> הבדיקה של "בניין מתחת לגלגלים" כמעט אף פעם לא מופעלת. בכל פריים המטוס יורד בערך 0.008 בגובה, אז הוא תמיד עובר דרך הטווח 0 עד 0.05, וההדיפה הכללית מוציאה אותו מהבניין עוד לפני שהוא נוגע. המנגנון הכללי פתר את המקרה לפני שהקוד הייעודי הגיע אליו. בנחיתות קשות, מה שבאמת עובד הוא תנאי המהירות.</div>
+    <p>ועוד שורה אחת: לחיצה על E באוויר נותנת "אין מצנח! קודם לנחות".</p>
+    <p><b>איך רואים גובה בלי תלת-ממד?</b> הצל זז הצידה ככל שהמטוס עולה, והמטוס עצמו מצויר אחרי הבניינים, מוגדל ונדחף החוצה ממרכז המסך (פרק 8). המצלמה גם מתרחקת. שלושת אלה יחד, והמוח משלים "גובה".</p>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvPlane" aria-label="מטוס ריסוס, מסלול, שדות ובנייני קיבוץ"></canvas><div class="hud" id="plHud"></div><div class="toast" id="plToast"></div></div>
+    <div class="ctl"><button class="btn pri" id="plDrop">הנחת אותו מעל חדר האוכל</button><button class="btn" id="plReset">חזרה למסלול</button></div>
+    <div class="pad" data-for="plane"><div class="grp"><button data-k="ArrowRight" aria-label="ימינה">▶</button><button data-k="ArrowLeft" aria-label="שמאלה">◀</button></div><div class="grp"><button data-k="ArrowDown" aria-label="האט">▼</button><button data-k="ArrowUp" aria-label="גז">▲</button></div></div>
+    <p class="cap"><span class="kbd">↑</span> גז (המראה במסלול), <span class="kbd">↓</span> האטה ונחיתה, <span class="kbd">←→</span> היגוי. הכפתור הצהוב שם את המטוס באוויר מעל חדר האוכל ומנמיך אותו: בגובה 0.05 מערכת ההתנגשויות תופסת אותו והודפת אותו לקיר, ורק אז הוא נוגע בקרקע.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 8 ============================================================ -->
+<section class="slide" data-key="depth" data-title="תלת-ממד מזויף" data-desc="בניינים שנוטים, וסדר הציור">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 8</p>
+    <h2>תלת-ממד מזויף</h2>
+    <p>הכל במשחק דו-ממדי. בניינים נראים בולטים כי הגג מצויר מוגדל, דחוף החוצה ממרכז המסך ביחס לגובה. בניין בקצה המסך נוטה החוצה, ובניין במרכז נראה מלמעלה, כמו שעין שמסתכלת למטה הייתה רואה. זה הטריק של GTA 2.</p>
+<pre class="code">k = 1 + height * 0.00125 * zoom       // כמה להגדיל את הגג
+roof(p) = cam + (p - cam) * k         // כל פינה נדחפת החוצה מהמרכז
+for each wall edge (a, b):
+    fill quad(a, b, roof(b), roof(a)) // קיר = מרובע בין הבסיס לגג
+fill polygon(roof(corners))           // והגג מעל</pre>
+    <p>הקירות שפונים למצלמה מוסתרים אוטומטית: הגג נדחף מעליהם. נשארים רק הקירות שפונים החוצה, וזה בדיוק מה שהיינו רואים במציאות. אין פה חישוב "מה נראה". זה יוצא מהגאומטריה.</p>
+    <h3>סדר הציור (אלגוריתם הצייר)</h3>
+    <p>אין כרטיס גרפי שמסדר עומק. פשוט מציירים מהרחוק לקרוב, והקרוב מכסה. בניינים ועצים ממוינים מחדש בכל פריים לפי מרחק מהמצלמה. שאר השכבות קבועות:</p>
+    <div class="tbl"><table>
+      <tr><th>#</th><th>שכבה</th><th>#</th><th>שכבה</th></tr>
+      <tr><td class="num">1</td><td>קרקע (אפויה מראש, פרק 9)</td><td class="num">8</td><td>קליעים, בלונים, חלקיקים</td></tr>
+      <tr><td class="num">2</td><td>צללים</td><td class="num">9</td><td>בניינים ועצים, ממוינים</td></tr>
+      <tr><td class="num">3</td><td>חפצים נמוכים, שער צהוב</td><td class="num">10</td><td>ציפורים ומטוסים באוויר</td></tr>
+      <tr><td class="num">4</td><td>מעולפים על הרצפה</td><td class="num">11</td><td>עשן ואבק</td></tr>
+      <tr><td class="num">5</td><td>רכבים חונים</td><td class="num">12</td><td>תאורת לילה ופנסים</td></tr>
+      <tr><td class="num">6</td><td>רכבים בתנועה</td><td class="num">13</td><td>גשם, שרב, ערפל</td></tr>
+      <tr><td class="num">7</td><td>אנשים, שחקן, מטריות</td><td class="num">14</td><td>שמות מקומות, HUD</td></tr>
+    </table></div>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvDepth" class="drag" aria-label="בניינים שנוטים ממרכז המסך"></canvas><div class="hud" id="depHud"></div></div>
+    <div class="ctl">
+      <label for="depK">עוצמת הפרספקטיבה</label><input id="depK" type="range" min="0" max="4" step="0.1" value="1"><output id="depKo"></output>
+    </div>
+    <div class="ctl"><label><input type="checkbox" id="depWrong"> סדר הפוך (קרוב לפני רחוק)</label></div>
+    <p class="cap">גרור כדי להזיז את המצלמה (בלי גרירה היא שטה לבד). ‏1× זה כמו במשחק. ‏0 משטיח הכל לתוכנית אדריכלית. סמן "סדר הפוך" וראה בניינים רחוקים מצוירים מעל קרובים. המכונית על הכביש מצוירת לפני הבניינים, ולכן נעלמת מתחת לקירות.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 9 ============================================================ -->
+<section class="slide" data-key="ground" data-title="הקרקע" data-desc="אפייה, מטמון, ובאג הטיסה מהשבוע">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 9</p>
+    <h2>הקרקע: לאפות פעם אחת</h2>
+    <p>לצייר מחדש את כל הכבישים, השדות והדשא בכל פריים זה יקר מדי. המפה מחולקת לריבועים של 256×256 יחידות, וכל ריבוע מצויר פעם אחת לקנבס נסתר ("אפייה"). בכל פריים רק מדביקים את הריבועים שבמסך, וזה כמעט חינם.</p>
+<pre class="code">for chunk in visible chunks:
+    if chunk in cache:        chunk.used = frame
+    elif bakedThisFrame &lt; 4:  bake(chunk)        // מקסימום 4 חדשים בפריים
+    else:                     fill khaki          // עוד לא מוכן. פריים הבא
+    if cache.size > 140:      evict least recently used   // LRU</pre>
+    <ul class="pts">
+      <li><b>תקציב לפריים</b>: אם צריך 20 ריבועים חדשים בבת אחת, הם מתפזרים על 5 פריימים במקום שפריים אחד ייקח 80ms ויורגש כגמגום.</li>
+      <li><b>מטמון</b>: עד 140 ריבועים בזיכרון, ובאייפון 90, כי ספארי הורג קנבסים מעל מכסת זיכרון (זה היה אחד הבאגים של אייפון).</li>
+      <li><b>סימני צמיגים ובוץ</b> נצבעים ישר לתוך הריבוע האפוי, ולכן הם נשארים לתמיד בלי לעלות כלום.</li>
+    </ul>
+    <h3>הבאג מהשבוע</h3>
+    <p>בטיסה הזום יורד לכ-0.4. ריבוע של 512 פיקסלים מוקטן פי 3 בבת אחת, והשדות מהבהבים (אליאסינג). הפתרון הקלאסי: גרסאות מוקטנות מראש, mipmaps. הניסיון הראשון גמגם, כי כל סימן צמיג של טרקטור זרק את המיפים ובנה אותם מחדש בכל פריים. התיקון: לצייר את הסימנים גם לתוך המיפים, ולבנות לכל היותר 10 בפריים.</p>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvGround" class="r43" aria-label="מפת הריבועים: מה אפוי, מה נאפה עכשיו ומה חסר"></canvas></div>
+    <div class="ctl">
+      <div class="seg" id="gMode" role="group" aria-label="מצב תנועה"><button data-m="drive" aria-pressed="true">נסיעה</button><button data-m="fly" aria-pressed="false">טיסה</button></div>
+      <label for="gBudget">תקציב לפריים</label><input id="gBudget" type="range" min="1" max="12" value="4"><output id="gBudgetO"></output>
+    </div>
+    <div class="ctl"><label for="gCache">גודל מטמון</label><input id="gCache" type="range" min="20" max="220" step="10" value="140"><output id="gCacheO"></output><button class="btn" id="gIos">כמו באייפון (90)</button></div>
+    <div class="hud" style="position:static;background:var(--surface);color:var(--ink);border:1px solid var(--line)" id="gStats"></div>
+    <p class="cap">ירוק = במטמון (כהה יותר = נראה לאחרונה). צהוב = נאפה בפריים הזה. אדום מקווקו = במסך אבל עוד לא מוכן. מסגרת אדומה = נזרק מהמטמון. עבור ל"טיסה": המסך רואה פי 5 ריבועים, והמטמון מתחיל לזרוק ריבועים שעוד יחזרו.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 10 ============================================================ -->
+<section class="slide" data-key="pop" data-title="אוכלוסייה" data-desc="העולם קיים רק סביבך">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 10</p>
+    <h2>אוכלוסייה: העולם קיים רק סביבך</h2>
+    <p>המפה גדולה מספיק לאלפי אנשים, אבל בכל רגע חיים בה כמה עשרות. כל 0.4 שניות מנהל האוכלוסייה סופר מי בטווח, מוחק את מי שרחוק, ומוסיף עד שמגיעים לצפיפות של האזור שאתה נמצא בו.</p>
+<pre class="code">every 0.4s:
+    want = density[district]               // לב הקיבוץ: 30 אנשים, 8 רכבים
+    for p in peds:
+        if dist(p, player) > 1300 and not persistent: remove(p)
+    repeat 6 times while count &lt; want:
+        spot = random point 620..1050 away
+        if spot is on screen: skip         // אף פעם לא מול העיניים
+        spawn at nearest road node         // על שביל, לא בתוך בניין
+simulate only within 1200                  // רחוק מזה: קפוא</pre>
+    <div class="tbl"><table>
+      <tr><th>אזור</th><th>אנשים</th><th>רכבים</th></tr>
+      <tr><td>לב הקיבוץ, שכונות, בריכה</td><td class="num">30</td><td class="num">8</td></tr>
+      <tr><td>ההרחבה</td><td class="num">16</td><td class="num">6</td></tr>
+      <tr><td>אזור התעשייה</td><td class="num">12</td><td class="num">6</td></tr>
+      <tr><td>המשק</td><td class="num">10</td><td class="num">4</td></tr>
+      <tr><td>צמתים וכבישים</td><td class="num">6</td><td class="num">9</td></tr>
+      <tr><td>שטח פתוח</td><td class="num">3</td><td class="num">4</td></tr>
+    </table></div>
+    <p><b>מי לא נמחק:</b> פרות, טרקטורים בשדות ומכוניות חונות הם <code>persistent</code>. רודפים ואנשים של משימה לא נמחקים גם כשהם רחוקים. גם סוג האנשים תלוי באזור: במשק 70% עובדים, בשכונות ילדים וותיקים, ובלב הקיבוץ לפעמים טבח.</p>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvPop" aria-label="השחקן, טבעת הלידה וטבעת המחיקה מלמעלה"></canvas><div class="hud" id="popHud"></div></div>
+    <div class="ctl">
+      <div class="seg" id="popDen" role="group" aria-label="צפיפות"><button data-d="30" aria-pressed="true">לב הקיבוץ</button><button data-d="16" aria-pressed="false">ההרחבה</button><button data-d="10" aria-pressed="false">המשק</button><button data-d="3" aria-pressed="false">שטח פתוח</button></div>
+      <label><input type="checkbox" id="popStop"> השחקן עומד</label>
+    </div>
+    <p class="cap">מבט מרחוק. המלבן הלבן הוא המסך. אנשים נולדים רק ברצועה הירוקה ורק מחוץ למסך, ונמחקים מעבר לעיגול האדום. מחוץ לעיגול המקווקו הם קפואים (אפורים). הפרות בדיר הן persistent: לא נמחקות אף פעם, רק קופאות.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 11 ============================================================ -->
+<section class="slide" data-key="ai" data-title="בינה מלאכותית" data-desc="מכונות מצבים ונהגים על גרף">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 11</p>
+    <h2>בינה מלאכותית: מכונות מצבים</h2>
+    <p>אין פה רשתות נוירונים. כל דמות היא מכונת מצבים: היא נמצאת במצב אחד (הולכת, בורחת, רודפת, מעולפת...), ובכל פריים המצב קובע לאן היא זזה. אירועים וטיימרים מעבירים בין מצבים.</p>
+<pre class="code">switch ped.state:
+    case 'walk':  move toward next road node
+    case 'flee':  move away from player, speed * 2.1
+    case 'chase': move toward player; if close: punch
+    case 'ko':    timer -= dt
+                  if timer &lt;= 0: wakeUp()   // ותיק: חוזר לרדוף ומתלונן</pre>
+    <p>במשחק יש בסך הכל 8 מצבים לאנשים ו-10 לחיות (פרה: מרעה, שוטטות, בריחה מהדיר. אנפה: עומדת, ועפה כשמתקרבים). זה מספיק כדי שהעולם ירגיש חי.</p>
+    <h3>נהגים</h3>
+    <p>רכבים נוסעים על גרף הכבישים. בכל צומת הם בוחרים המשך לפי ציון: ‏1.4 פחות זווית הפנייה, ועוד רעש אקראי. ככה הם מעדיפים להמשיך ישר, אבל לא תמיד. הם נוסעים בצד ימין של הכביש, ובכל פריים "מגששים" נקודה לפניהם: אם יש שם מישהו, בולמים. תקוע 3.5 שניות? רוורס.</p>
+<pre class="code">score(edge) = max(0.08, 1.4 - |turnAngle|) + random() * 0.6
+probe = pos + forward * (length/2 + 12 + speed * 0.25)
+if someone near probe: brake;  blockedTime += dt
+if blockedTime > 3.5: reverse for 1.1s</pre>
+  </div>
+  <div class="demo">
+    <div class="sm" id="sm"></div>
+    <div class="ctl">
+      <div class="seg" id="smType" role="group" aria-label="סוג דמות"><button data-t="elder" aria-pressed="true">ותיק</button><button data-t="adult" aria-pressed="false">מבוגר</button><button data-t="brawl" aria-pressed="false">מבוגר בריון</button><button data-t="kid" aria-pressed="false">ילד</button></div>
+    </div>
+    <div class="ctl">
+      <button class="btn pri" id="smHit">אגרוף (1.5)</button><button class="btn" id="smHorn">צפירה</button>
+      <label><input type="checkbox" id="smHeat"> יש רוגז</label>
+      <span>חיים <span class="pips" id="smHp"></span></span><span class="mono" id="smTimer"></span>
+    </div>
+    <ul class="log" id="smLog" aria-live="polite"></ul>
+    <div class="screen"><canvas id="cvRoad" aria-label="רכבים נוסעים על גרף כבישים ובוחרים פניות"></canvas></div>
+    <div class="ctl"><label><input type="checkbox" id="roadShow" checked> הצג החלטות בצמתים ונקודות גישוש</label></div>
+    <p class="cap">למעלה: מכונת המצבים האמיתית של דמות. נסה ותיק: אגרוף, אגרוף, ותראה מה קורה כשהוא קם עם רוגז ובלי. למטה: נהגים על גרף. המספרים בצומת הם הציונים, והירוק הוא הבחירה. הנקודה מול כל רכב היא הגישוש, והיא מאדימה כשהוא בולם.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 12 ============================================================ -->
+<section class="slide" data-key="heat" data-title="רוגז" data-desc="מערכת המבוקשים, כולל עדים">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 12</p>
+    <h2>רוגז: מערכת המבוקשים</h2>
+    <p>רוגז הוא מספר אחד בין 0 ל-16. כל עבירה בקוד קוראת ל-<code>G.crime(כמות)</code>, אבל הרוגז עולה רק אם יש עד: ותיק, שומר או גנן בטווח 330, או רודף שכבר בדרך. בלי עדים, זה לא קרה.</p>
+<pre class="code">crime(h):
+    if any witness within 330: heat = min(16, heat + h);  unseen = 0
+
+every frame:
+    if no chaser within ~450: unseen += dt
+    if unseen > 3: heat -= (0.3 + 0.12 * level) * dt   // בכוכבים גבוהים יורד מהר יותר
+    level = how many of [0.6, 3, 5.5, 8.5, 12] heat passed
+    if chasers &lt; [0, 2, 3, 5, 6, 8][level]:
+        spawn one off-screen every (2.4 - 0.25 * level) s</pre>
+    <div class="tbl"><table>
+      <tr><th>כוכבים</th><th>מי מגיע</th><th>רודפים</th></tr>
+      <tr><td>★</td><td>הנויניק: ותיקים וגנן ברגל</td><td class="num">2</td></tr>
+      <tr><td>★★</td><td>"זה ייכנס לעלון": קלנועיות</td><td class="num">3</td></tr>
+      <tr><td>★★★</td><td>ועד הקיבוץ: רכב גולף עם מגפון</td><td class="num">5</td></tr>
+      <tr><td>★★★★</td><td>הקב״ט בטנדר עם צ׳קלקה</td><td class="num">6</td></tr>
+      <tr><td>★★★★★</td><td>רכז המשק על טרקטור</td><td class="num">8</td></tr>
+    </table></div>
+    <p><b>נתפסת:</b> אם רודף צמוד אליך ואתה כמעט עומד (מתחת ל-55), פס תפיסה מתמלא ב-0.7 לשנייה לכל רודף, עד פי 3. כשהוא מלא: קנס של 80 ועוד 60 לכל כוכב, ואסיפה כללית. <b>להתחמק:</b> מוסך מאפס הכל, ובגדים מהקומונה מורידים כוכב אחד.</p>
+  </div>
+  <div class="demo">
+    <div class="heat">
+      <div class="hrow"><div class="hmsg" id="hMsg" aria-live="polite"></div><div class="stars" id="hStars" aria-label="כוכבים"><span>★</span><span>★</span><span>★</span><span>★</span><span>★</span></div></div>
+      <div><div class="bar" id="hBar"><div class="fill" id="hFill"></div></div></div>
+      <div class="hrow" style="margin-top:12px"><span class="mono" id="hNum"></span><span class="mono" id="hUnseen"></span></div>
+      <div><div class="cap" style="margin-bottom:6px">רודפים בדרך <span class="mono" id="hWant"></span></div><div class="chips" id="hChasers"></div></div>
+      <div class="ctl">
+        <label><input type="checkbox" id="hWit" checked> יש עד בסביבה</label>
+        <label><input type="checkbox" id="hSeen" checked> רודפים רואים אותך</label>
+      </div>
+      <div class="crimes" id="hCrimes">
+        <button class="btn" data-h="0.5">אגרוף<span>+0.5</span></button>
+        <button class="btn" data-h="0.45">ירייה בטוטו<span>+0.45</span></button>
+        <button class="btn" data-h="0.7">טוטו בנהג<span>+0.7</span></button>
+        <button class="btn" data-h="0.6">התנגשות ברכב<span>+0.6</span></button>
+        <button class="btn" data-h="0.25">גדר בקיבוץ<span>+0.25</span></button>
+        <button class="btn" data-h="1.2">עילפון מבוגר<span>+1.2</span></button>
+        <button class="btn" data-h="2.2">עילפון ותיק<span>+2.2</span></button>
+        <button class="btn" data-h="1.4">גניבת קלנועית<span>+1.4</span></button>
+        <button class="btn" id="hLawn">החזק: נסיעה על דשא<span>+0.32/שנ׳</span></button>
+      </div>
+      <div class="ctl"><label><input type="checkbox" id="hHeavy"> בטרקטור (פי 1.8)</label></div>
+      <div>
+        <div class="cap" style="margin-bottom:6px">פס תפיסה</div>
+        <div class="gbar"><div id="hGrab"></div></div>
+      </div>
+      <div class="ctl">
+        <button class="btn hot" id="hGrabBtn">החזק: רודף צמוד ואתה עומד</button>
+        <button class="btn" id="hGarage">מוסך</button>
+        <button class="btn" id="hClothes">בגדים מהקומונה</button>
+      </div>
+    </div>
+    <p class="cap">זה המנוע האמיתי של הרוגז, עם המספרים מהקוד. נסה לעלף ותיק בלי עד: כלום. נסה להגיע ל-3 כוכבים ואז לבטל את "רודפים רואים אותך": אחרי 3 שניות הרוגז מתחיל לרדת.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 13 ============================================================ -->
+<section class="slide" data-key="combat" data-title="קרב" data-desc="קליע, זרם, פגיעת שטח. ואף אחד לא מת">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 13</p>
+    <h2>קרב: אף אחד לא מת</h2>
+    <p>לכל דמות יש נקודות חיים: ותיק ומבוגר 3, ילד 2. כשהן נגמרות היא לא מתה. היא עוברת למצב <code>ko</code> לכמה שניות, מפילה 1 עד 3 מטבעות, וקמה. זו החלטת עיצוב: משחק קיבוצי, לא משחק מלחמה.</p>
+    <p>שלושת הנשקים הם שלוש צורות שונות לגמרי בקוד:</p>
+    <ul class="pts">
+      <li><b>קליע (אקדח טוטו).</b> ישות קטנה עם מיקום, מהירות 560 וזמן חיים 0.6 שניות. בכל פריים בודקים אם פגעה בבניין, באדם או ברכב. פגיעה בנהג: מסוחרר 2.2 שניות.</li>
+      <li><b>זרם (רובה מים, מטף).</b> בכלל לא קליעים. בכל פריים בודקים קונוס: מי שבטווח ובזווית מקבל "רטיבות". רטיבות מעל 1 = מעולף. הטיפות שרואים הן קישוט בלבד.</li>
+      <li><b>פגיעת שטח (בלון מים).</b> עף בקשת 0.6 שניות, וננעל לבד על מטרה בזווית קטנה. כשהוא נוחת, כל מי שברדיוס 56 מתעלף.</li>
+    </ul>
+<pre class="code">hitPed(p, dmg):
+    p.hp -= dmg
+    if p.hp &lt;= 0: ko(p, elder ? 5 : 6.5); dropCoins(1..3); crime(elder ? 2.2 : 1.2)
+    elif p.brawler and dmg is punch: p.state = 'fight'   // 30% מהמבוגרים מחזירים
+    else: p.state = 'flee'; crime(0.5)</pre>
+    <p><b>השחקן</b>: 100 חיים, שריון סופג 60% מכל מכה. באפס מתעלפים, מתעוררים במרפאה ("האחות נתנה אקמול") ומשלמים 12% מהכסף.</p>
+  </div>
+  <div class="demo">
+    <div class="ctl">
+      <div class="seg" id="cbW" role="group" aria-label="נשק"><button data-w="fist" aria-pressed="true">אגרוף</button><button data-w="toto" aria-pressed="false">טוטו</button><button data-w="soaker" aria-pressed="false">רובה מים</button><button data-w="ext" aria-pressed="false">מטף</button><button data-w="balloon" aria-pressed="false">בלון</button><button data-w="car" aria-pressed="false">דריסה</button></div>
+    </div>
+    <div class="ctl">
+      <div class="seg" id="cbT" role="group" aria-label="מטרה"><button data-t="elder" aria-pressed="true">ותיק</button><button data-t="adult" aria-pressed="false">מבוגר</button><button data-t="kid" aria-pressed="false">ילד</button><button data-t="cow" aria-pressed="false">פרה</button><button data-t="chicken" aria-pressed="false">תרנגולת</button></div>
+    </div>
+    <div class="screen"><canvas id="cvCombat" class="r169" aria-label="הדגמת נשק על מטרה"></canvas></div>
+    <div class="ctl"><button class="btn pri" id="cbGo">הדגם</button></div>
+    <div class="res" id="cbRes"></div>
+  </div>
+</div></div>
+</section>
+
+<!-- 14 ============================================================ -->
+<section class="slide" data-key="assets" data-title="הכל בקוד" data-desc="מפה, ספרייטים וסאונד בלי קבצים">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 14</p>
+    <h2>בלי קבצים: הכל נוצר בקוד</h2>
+    <p>במשחק יש שלוש תמונות בלבד: לוגו, אייקון ותמונת שיתוף. כל השאר נוצר בזמן ריצה, ולכן כל המשחק שוקל פחות מתמונה אחת ממוצעת באינסטגרם.</p>
+    <ul class="pts">
+      <li><b>המפה.</b> שילוב של תכנון ידני (איפה הקיבוץ, המשק, הוואדי, הכביש הראשי) ופרטים פרוצדורליים: שבילים מתפתלים, שדות, בתים, עצים. הכל מגנרטור אקראי עם זרע קבוע, <code>RNG(1910)</code>, שנת הקמת דגניה. זרע קבוע = אותה מפה בדיוק אצל כולם, בכל טעינה.</li>
+      <li><b>ספרייטים.</b> כל רכב, אדם, חיה, עץ וגג מצוירים בקוד לקנבס קטן בפעם הראשונה שצריך אותם, ונשמרים במטמון לפי "סוג + צבע". אחרי זה ציור שלהם הוא העתקת תמונה.</li>
+      <li><b>סאונד.</b> WebAudio: מתנדים, רעש לבן ומסננים. צופרים, "מוווו", מנועים שמשנים גובה לפי מהירות, גשם, ושש תחנות רדיו שלמות שמלחינות את עצמן: הורה, פאנק, מזרחית, רוק עברי, טראנס, וקול העלון.</li>
+      <li><b>זמן.</b> יום שלם = 16 דקות אמיתיות. מזג האוויר מתחלף: בהיר, מעונן, גשם (הכביש רטוב, אחיזה פחות 28%), שרב וערפל בוקר.</li>
+    </ul>
+<pre class="code">rng = RNG(1910)                   // אותו זרע, אותם מספרים, אותה מפה
+sprite(type, color):
+    key = type + '|' + color
+    if not cache[key]:
+        cache[key] = drawToCanvas(...)  // רק בפעם הראשונה
+    return cache[key]</pre>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvSprite" class="r169" aria-label="ספרייט של רכב מצויר שלב אחר שלב"></canvas><div class="hud" id="spHud"></div></div>
+    <div class="ctl">
+      <div class="seg" id="spType" role="group" aria-label="סוג"><button data-t="car" aria-pressed="true">מכונית</button><button data-t="tractor" aria-pressed="false">טרקטור</button><button data-t="kalnoit" aria-pressed="false">קלנועית</button></div>
+      <div class="seg" id="spCol" role="group" aria-label="צבע"><button data-c="#c0392b" aria-pressed="true">אדום</button><button data-c="#2c6fb5" aria-pressed="false">כחול</button><button data-c="#3d8a52" aria-pressed="false">ירוק</button><button data-c="#f2f2f2" aria-pressed="false">לבן</button></div>
+      <button class="btn" id="spDraw">צייר שלב אחר שלב</button>
+    </div>
+    <h3 style="margin:4px 0 0">סאונד, מסונתז עכשיו</h3>
+    <div class="ctl"><button class="btn" data-snd="horn">צופר</button><button class="btn" data-snd="moo">פרה</button><button class="btn" data-snd="bell">פעמון אופניים</button><button class="btn" data-snd="thud">מכה</button><button class="btn" data-snd="coin">מטבע</button></div>
+    <p class="cap">אף אחד מהצלילים האלה לא קובץ: כל לחיצה בונה אותם מאפס ממתנדים ומסננים (גרסה מוקטנת של מה שהמשחק עושה).</p>
+    <h3 style="margin:4px 0 0">זרע אקראי</h3>
+    <div class="ctl"><label for="seedIn">זרע</label><input id="seedIn" type="number" value="1910" style="width:7em;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:4px 8px"><button class="btn" id="seedGo">הגרל</button></div>
+    <div class="mono" id="seedOut" style="direction:ltr;text-align:left;font-size:.82rem;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 10px"></div>
+    <p class="cap">לחץ "הגרל" כמה פעמים: אותו זרע מחזיר בדיוק אותם מספרים. שנה זרע וקבל עולם אחר.</p>
+  </div>
+</div></div>
+</section>
+
+<!-- 15 ============================================================ -->
+<section class="slide" data-key="engine" data-title="בחינם מול עבודת יד" data-desc="מה מנגנון כללי פותר ומה דורש if">
+<div class="wrap">
+  <p class="eyebrow">פרק 15</p>
+  <h2>מה בא בחינם, ומה בעבודת יד</h2>
+  <p class="lead">כשאין מנוע, שום דבר לא בא בחינם במובן המילולי. אבל יש הבדל עצום בין מנגנון כללי אחד שמכסה מאות מקרים, לבין שורת <code>if</code> למקרה אחד. משחק טוב בנוי בעיקר מהראשון, עם כמות קטנה ומדויקת מהשני.</p>
+  <div class="cmp">
+    <section>
+      <h3>מנגנון אחד, הרבה מקרים <span class="tag gen">כללי</span></h3>
+      <ul>
+        <li><b>collideStatic</b>כל אדם, חיה ושחקן נחסם בכל בניין וחפץ. פונקציה אחת, שתי שאילתות גריד.</li>
+        <li><b>power מול need</b>מי שובר מה: טרקטור מול עץ, מכונית מול גדר, אופניים מול ספסל. טבלת מספרים, אפס מקרים מיוחדים.</li>
+        <li><b>רסטר החומרים</b>אחיזה וגרר לכל כלי על כל קרקע, עבירת דשא, הצפת מנוע, דריסת שדות. בדיקה אחת.</li>
+        <li><b>G.crime(h)</b>כל עבירה במשחק עוברת דרך אותה פונקציה, והעדים, הכוכבים והרודפים נקבעים במקום אחד.</li>
+        <li><b>proj()</b>כל דבר עם גובה (בניין, עץ, שער צהוב, מטוס) מקבל פרספקטיבה מאותה נוסחה.</li>
+        <li><b>מנהל האוכלוסייה</b>מתחזק את כל המפה מטבלת צפיפות אחת, בלי שאף אזור ידע עליו.</li>
+        <li><b>החלקה אקספוננציאלית</b>מצלמה, היגוי, סיבוב, זום, מוזיקה. אותה שורה.</li>
+      </ul>
+    </section>
+    <section>
+      <h3>טיפול בוטיק <span class="tag bou">ידני</span></h3>
+      <ul>
+        <li><b>מטוס באוויר</b>לא בודקים התנגשויות כש-alt מעל 0.05, בשלושה מקומות (בניינים, רכבים, אנשים). מתחת לזה הוא נבדק כמו כל רכב, וזה כבר חינם.</li>
+        <li><b>נחיתה קשה</b>בדיקה מפורשת ברגע הנגיעה (בניין או מהירות מעל 300), עם נזק. ואי אפשר לצאת באוויר. ובפועל חלק הבניין שלה כמעט לא מופעל, כי ההתנגשות הכללית מקדימה אותו (פרק 7).</li>
+        <li><b>רודפים יורדים מהרכב</b>כשהשחקן ברגל ורודף ברכב עוצר לידו, הנהג קופץ החוצה ורודף ברגל. בלי זה הם היו נוסעים סביבך לנצח.</li>
+        <li><b>הוצאת נהג</b>מנסים לשים אותו בצד ימין, אחר כך שמאל, אחר כך מאחור, עד שיש מקום פנוי.</li>
+        <li><b>אנפות אחרי המחרשה</b>נוחתות על התלם הטרי, מנקרות, נשארות מאחור וקופצות קדימה. כמו במציאות.</li>
+        <li><b>פרה לא מתעלפת</b>היא אומרת "מוווו" וזזה קצת.</li>
+        <li><b>אייפון</b>מכסת זיכרון לקנבסים, גובה המסך האמיתי, פתיחת סאונד בשחרור האצבע.</li>
+        <li><b>מיפים לקרקע</b>רק בגלל שהזום של הטיסה רחוק במיוחד.</li>
+      </ul>
+    </section>
+  </div>
+  <div class="engine">
+    <h3 style="margin-top:0">ומה מנוע אמיתי היה נותן?</h3>
+    <div class="two">
+      <div>
+        <p><b>היה בא בחינם</b> ב-Unity, Godot או Phaser:</p>
+        <ul class="pts">
+          <li>ציור על כרטיס המסך (GPU) עם אלפי ספרייטים בפריים</li>
+          <li>מנוע פיזיקה (Box2D ודומיו): גופים, מסות, חיכוך, וגריד מרחבי מובנה</li>
+          <li>שכבות התנגשות, מצלמה, עץ סצנה, מפות אריחים</li>
+          <li>טעינת קבצי תמונה וסאונד, מערבל אודיו</li>
+          <li>עורך גרפי, קלט ממגע ומשלט</li>
+        </ul>
+      </div>
+      <div>
+        <p><b>לא היה בא</b>, בשום מנוע:</p>
+        <ul class="pts">
+          <li>חוקי המשחק: רוגז, עדים, קנסות, משימות</li>
+          <li>ההתנהגויות: ותיק שמתלונן בוועד כשהוא מתעורר</li>
+          <li>ההומור והעולם: הנויניק, העלון, מספרי הכביסה</li>
+          <li>מקרי הקצה. במנוע היית שם את המטוס ב"שכבת התנגשות" אחרת כשהוא באוויר. זו עדיין החלטה שמישהו צריך לקבל, רק בתפריט במקום בקוד.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- 16 ============================================================ -->
+<section class="slide" data-key="feel" data-title="למה זה כיף" data-desc="Juice, ומערכות שמתנגשות">
+<div class="wrap"><div class="cols">
+  <div class="text">
+    <p class="eyebrow">פרק 16</p>
+    <h2>למה זה כיף: Juice</h2>
+    <p>ההבדל בין "עובד" לבין "מרגיש טוב" הוא שכבה של משוב קטן על כל פעולה. אף אחד מאלה לא משנה את הסימולציה. האגרוף מוריד 1.5 חיים בכל מקרה. כולם משנים את התחושה.</p>
+    <ul class="pts">
+      <li><b>רעידת מסך</b> שגדלה עם עוצמת המכה ודועכת לבד (<code>shake *= exp(-7·dt)</code>).</li>
+      <li><b>חלקיקים, הבזק ודחיפה לאחור</b>: המכה "נוחתת" על משהו.</li>
+      <li><b>משפטים</b>: "בזמני היו מעיפים על זה מהחברות", "אני כותב לעלון!", "הביטוח של המשק לא מכסה את זה!".</li>
+      <li><b>שאריות</b>: סימני צמיגים, כתמי בוץ, עצים שנפלו. העולם זוכר מה עשית.</li>
+      <li><b>זום לפי מהירות</b>, רדיו שמשתנה עם הרכב, מנוע שעולה בטון.</li>
+    </ul>
+    <h3>ומה עושה אותו מוצלח באמת</h3>
+    <p>מערכות שמתנגשות זו בזו. אף אחד לא כתב את הסיפור הבא. הוא נוצר מהחיבור:</p>
+    <div class="chain"><span>נסעת על הדשא</span><i>←</i><span>רסטר: lawn</span><i>←</i><span>ותיק במרחק 200 ראה</span><i>←</i><span>רוגז, כוכב שני</span><i>←</i><span>קלנועיות יוצאות</span><i>←</i><span>ברחת לשדה</span><i>←</i><span>הקלנועית נתקעה בחול</span><i>←</i><span>מוסך</span></div>
+    <p>כל חוליה היא מנגנון כללי מפרק אחר. כשהם מחוברים נכון, השחקן ממציא את הסיפורים לבד. זה ההבדל בין משחק לבין רשימת פיצ׳רים.</p>
+  </div>
+  <div class="demo">
+    <div class="screen"><canvas id="cvFeel" aria-label="אגרוף בדמות עם ובלי משוב"></canvas></div>
+    <div class="ctl"><button class="btn pri" id="feelHit">אגרוף</button><button class="btn" id="feelAll">הכל דולק</button><button class="btn" id="feelNone">הכל כבוי</button></div>
+    <div class="ctl" id="feelOpts">
+      <label><input type="checkbox" data-j="shake" checked> רעידה</label>
+      <label><input type="checkbox" data-j="particles" checked> חלקיקים</label>
+      <label><input type="checkbox" data-j="knock" checked> דחיפה לאחור</label>
+      <label><input type="checkbox" data-j="flash" checked> הבזק</label>
+      <label><input type="checkbox" data-j="speech" checked> משפט</label>
+      <label><input type="checkbox" data-j="sound" checked> צליל</label>
+    </div>
+    <p class="cap">לחץ על המסך או על "אגרוף". אחר כך "הכל כבוי" ונסה שוב: אותה מכה בדיוק, אותו נזק, תחושה של גיליון אלקטרוני.</p>
+  </div>
+</div></div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <button class="btn navb" id="prevB">הקודם</button>
+  <div class="dots" id="dots"></div>
+  <span class="hint" id="hint"></span>
+  <button class="btn pri navb" id="nextB">הבא</button>
+</footer>
+
+<script>
+'use strict';
+/* =================================================================
+   helpers
+   ================================================================= */
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const TAU = Math.PI * 2, clamp = (v, a, b) => v < a ? a : v > b ? b : v, lerp = (a, b, t) => a + (b - a) * t, hyp = Math.hypot;
+const rnd = (a, b) => a + Math.random() * (b - a), pick = a => a[Math.floor(Math.random() * a.length)];
+function angDiff(a, b) { let d = (b - a) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; }
+function RNG(seed) { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const rr2 = (R, a, b) => a + R() * (b - a);
+function fit(cv) {
+  const r = cv.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+  const W = Math.max(1, Math.round(r.width * dpr)), H = Math.max(1, Math.round(r.height * dpr));
+  if (cv.width !== W || cv.height !== H) { cv.width = W; cv.height = H; }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  return { g, w: r.width, h: r.height, dpr };
+}
+function view(F, cx, cy, ppu, ox, oy) { const d = F.dpr; F.g.setTransform(d * ppu, 0, 0, d * ppu, d * (F.w / 2 - cx * ppu + (ox || 0)), d * (F.h / 2 - cy * ppu + (oy || 0))); }
+function screenT(F) { F.g.setTransform(F.dpr, 0, 0, F.dpr, 0, 0); }
+function rr(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function shade(hex, f) { const n = parseInt(hex.slice(1), 16); let r = n >> 16, g = (n >> 8) & 255, b = n & 255; const t = f < 0 ? 0 : 255, p = Math.abs(f); r = Math.round((t - r) * p + r); g = Math.round((t - g) * p + g); b = Math.round((t - b) * p + b); return `rgb(${r},${g},${b})`; }
+function arrow(g, x, y, dx, dy, col, w) { const l = hyp(dx, dy); if (l < 1) return; g.strokeStyle = col; g.fillStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(x, y); g.lineTo(x + dx, y + dy); g.stroke(); const a = Math.atan2(dy, dx), hs = Math.min(9, l * .45) + w; g.beginPath(); g.moveTo(x + dx, y + dy); g.lineTo(x + dx - Math.cos(a - .45) * hs, y + dy - Math.sin(a - .45) * hs); g.lineTo(x + dx - Math.cos(a + .45) * hs, y + dy - Math.sin(a + .45) * hs); g.closePath(); g.fill(); }
+function setHTML(el, h) { if (el._h !== h) { el._h = h; el.innerHTML = h; } }
+function txt(g, s, x, y, size, col, align) { g.font = `600 ${size}px Heebo, system-ui, sans-serif`; g.fillStyle = col; g.textAlign = align || 'center'; g.textBaseline = 'middle'; g.direction = 'rtl'; g.fillText(s, x, y); }
+function trackPointer(cv) {
+  const p = { x: 0, y: 0, down: false, t: -1e9, dx: 0, dy: 0 };
+  const upd = e => { const r = cv.getBoundingClientRect(); const nx = e.clientX - r.left, ny = e.clientY - r.top; if (p.down) { p.dx += nx - p.x; p.dy += ny - p.y; } p.x = nx; p.y = ny; p.t = performance.now(); };
+  cv.addEventListener('pointermove', upd);
+  cv.addEventListener('pointerdown', e => { p.down = true; const r = cv.getBoundingClientRect(); p.x = e.clientX - r.left; p.y = e.clientY - r.top; p.t = performance.now(); try { cv.setPointerCapture(e.pointerId); } catch (_) { } });
+  const up = () => { p.down = false; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  p.recent = ms => performance.now() - p.t < (ms || 2500);
+  return p;
+}
+function segGroup(el, cb) { el.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; el.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false')); cb(b.dataset); }); }
+function toaster(el) { let t = 0; return { show(s, d) { el.textContent = s; el.classList.add('on'); t = d || 1.8; }, tick(dt) { if (t > 0) { t -= dt; if (t <= 0) el.classList.remove('on'); } } }; }
+
+/* pseudo-code highlighter */
+for (const pre of $$('pre.code')) {
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const KW = /\b(function|if|elif|else|for|in|while|return|switch|case|every|repeat|times|and|or|not|skip|on|is|true|false|null)\b/g;
+  pre.innerHTML = pre.textContent.split('\n').map(line => {
+    const i = line.indexOf('//'); const code = i >= 0 ? line.slice(0, i) : line, com = i >= 0 ? line.slice(i + 2) : null;
+    let h = esc(code).replace(/('[^']*')/g, '<span class="s">$1</span>').replace(KW, '<span class="k">$1</span>').replace(/(^|[^\w.])(\d+(?:\.\d+)?)/g, '$1<span class="n">$2</span>');
+    if (com !== null) h += '<span class="c">// <bdi>' + esc(com.trim()) + '</bdi></span>';
+    return h;
+  }).join('\n');
+}
+
+/* keyboard + touch pad */
+const keys = {}; const K = (...c) => c.some(x => keys[x]);
+const DRIVE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
+for (const pad of $$('.pad')) for (const b of pad.querySelectorAll('button')) {
+  const k = b.dataset.k, on = e => { e.preventDefault(); keys[k] = true; b.classList.add('on'); }, off = () => { keys[k] = false; b.classList.remove('on'); };
+  b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('pointerleave', off);
+}
+
+/* =================================================================
+   shared game bits: vehicle table, materials, physics, collisions
+   (ported from entities.js / world.js / farm.js)
+   ================================================================= */
+const VT = {
+  car: { name: 'מכונית', maxF: 345, acc: 270, brake: 470, turn: 1.95, grip: 8.5, mass: 8, off: .1, L: 52, W: 26, col: '#c0392b' },
+  tractor: { name: 'טרקטור', maxF: 178, acc: 150, brake: 320, turn: 1.6, grip: 12, mass: 22, off: 1, L: 62, W: 36, col: '#2f8f3a' },
+  kalnoit: { name: 'קלנועית', maxF: 135, acc: 130, brake: 300, turn: 2.0, grip: 9, mass: 3, off: .25, L: 34, W: 20, col: '#e8c547' },
+  bike: { name: 'אופניים', maxF: 190, acc: 260, brake: 380, turn: 2.8, grip: 7, mass: 1.2, off: .35, L: 26, W: 9, col: '#2a6ab8' },
+  milk: { name: 'מכלית חלב', maxF: 230, acc: 150, brake: 300, turn: 1.3, grip: 9, mass: 20, off: .2, L: 92, W: 32, col: '#f2f2f2' },
+};
+for (const k in VT) { const d = VT[k]; d.n = Math.max(2, Math.round(d.L / (d.CW || d.W))); d.type = k; }
+const MAT = {
+  DRY: { name: 'אדמה יבשה', col: '#b3a663', grip: .85, drag: .82 },
+  GRASS: { name: 'דשא', col: '#62a845', grip: .8, drag: .86, lawn: true },
+  ROAD: { name: 'כביש', col: '#4c4e52', grip: 1, drag: 1, road: true },
+  SAND: { name: 'חול', col: '#d9c59a', grip: .6, drag: .55 },
+  MUD: { name: 'בוץ', col: '#5e4129', grip: .55, drag: .7 },
+  WATER: { name: 'מים', col: '#3b7f99', grip: .4, drag: .25, water: true },
+  WHEAT: { name: 'חיטה', col: '#d8b04e', grip: .75, drag: .72, crop: true },
+  PLOWED: { name: 'שדה חרוש', col: '#7c5a38', grip: .7, drag: .62 },
+};
+function mkCar(t, x, y, a) { return { d: VT[t], x, y, a: a || 0, vx: 0, vy: 0, vf: 0, vl: 0, steer: 0, ctrl: { thr: 0, steer: 0, hb: false }, flood: 0 }; }
+function carPhysics(v, dt, m) {
+  const d = v.d, ctrl = v.ctrl;
+  const drag = lerp(m.drag, 1, d.off), grip = d.grip * lerp(m.grip, 1, d.off * .8), maxF = d.maxF * drag;
+  const c = Math.cos(v.a), s = Math.sin(v.a); let vf = v.vx * c + v.vy * s, vl = -v.vx * s + v.vy * c;
+  if (ctrl.thr > 0) { if (vf < -5) vf += d.brake * dt; else vf += d.acc * dt * ctrl.thr * Math.max(0, 1 - Math.max(0, vf) / maxF); }
+  else if (ctrl.thr < 0) { if (vf > 5) vf -= d.brake * dt * -ctrl.thr; else vf -= d.acc * .6 * dt * Math.max(0, 1 - Math.max(0, -vf) / (maxF * .4)); }
+  else vf *= Math.exp(-.8 * dt);
+  if (Math.abs(vf) > maxF) vf *= Math.exp(-(1 - drag + .4) * 3 * dt);
+  if (ctrl.hb) vf *= Math.exp(-2.2 * dt);
+  vl *= Math.exp(-grip * (ctrl.hb ? .18 : 1) * dt);
+  v.steer += (ctrl.steer - v.steer) * Math.min(1, dt * 9);
+  v.a += v.steer * d.turn * dt * clamp(vf / 70, -1, 1) / (1 + Math.abs(vf) / d.maxF * .55) * (ctrl.hb ? 1.5 : 1);
+  const c2 = Math.cos(v.a), s2 = Math.sin(v.a);
+  v.vx = vf * c2 - vl * s2; v.vy = vf * s2 + vl * c2; v.x += v.vx * dt; v.y += v.vy * dt; v.vf = vf; v.vl = vl;
+}
+function mkRect(x, y, hw, hh, a, o) { return Object.assign({ x, y, hw, hh, a, c: Math.cos(a), s: Math.sin(a) }, o || {}); }
+function shapePush(o, cx, cy, r) {
+  if (o.hw === undefined) { const dx = cx - o.x, dy = cy - o.y, rr_ = r + o.r, d2 = dx * dx + dy * dy; if (d2 >= rr_ * rr_) return null; const d = Math.sqrt(d2) || .001; return { nx: dx / d, ny: dy / d, pen: rr_ - d }; }
+  const dx = cx - o.x, dy = cy - o.y, lx = dx * o.c + dy * o.s, ly = -dx * o.s + dy * o.c;
+  const px = clamp(lx, -o.hw, o.hw), py = clamp(ly, -o.hh, o.hh); const ex = lx - px, ey = ly - py, d2 = ex * ex + ey * ey;
+  let nx, ny, pen; if (d2 >= r * r) return null;
+  if (d2 < 1e-6) { const ox = o.hw - Math.abs(lx), oy = o.hh - Math.abs(ly); if (ox < oy) { nx = lx < 0 ? -1 : 1; ny = 0; pen = ox + r; } else { nx = 0; ny = ly < 0 ? -1 : 1; pen = oy + r; } }
+  else { const d = Math.sqrt(d2); nx = ex / d; ny = ey / d; pen = r - d; }
+  return { nx: nx * o.c - ny * o.s, ny: nx * o.s + ny * o.c, pen };
+}
+function rectPoly(o) { return [[-o.hw, -o.hh], [o.hw, -o.hh], [o.hw, o.hh], [-o.hw, o.hh]].map(([lx, ly]) => [o.x + lx * o.c - ly * o.s, o.y + lx * o.s + ly * o.c]); }
+function carCircles(v) { const d = v.d, n = d.n, cw = d.CW || d.W, half = Math.max(0, d.L / 2 - cw / 2), c = Math.cos(v.a), s = Math.sin(v.a), out = []; for (let i = 0; i < n; i++) { const o = -half + 2 * half * i / (n - 1); out.push({ x: v.x + c * o, y: v.y + s * o, r: cw / 2 }); } return out; }
+function resolveStatic(v, shapes, onHit) {
+  let nxs = 0, nys = 0;
+  for (const c of carCircles(v)) for (const b of shapes) { const k = shapePush(b, c.x, c.y, c.r); if (k) { v.x += k.nx * k.pen; v.y += k.ny * k.pen; c.x += k.nx * k.pen; c.y += k.ny * k.pen; nxs += k.nx; nys += k.ny; if (onHit) onHit(c, k); } }
+  if (nxs || nys) { const n = hyp(nxs, nys) || 1, nx = nxs / n, ny = nys / n, vn = v.vx * nx + v.vy * ny; if (vn < 0) { v.vx -= vn * nx * 1.3; v.vy -= vn * ny * 1.3; return -vn; } }
+  return 0;
+}
+function drawVeh(g, v, col) {
+  const d = v.d; g.save(); g.translate(v.x, v.y); g.rotate(v.a);
+  g.fillStyle = 'rgba(0,0,0,.28)'; rr(g, -d.L / 2 + 2, -d.W / 2 + 3, d.L, d.W, 5); g.fill();
+  col = col || v.col || d.col;
+  if (d.type === 'bike') { g.fillStyle = '#222'; g.fillRect(-d.L / 2, -1.5, d.L, 3); g.fillStyle = col; g.fillRect(-d.L / 4, -d.W / 2, d.L / 2, d.W); g.fillStyle = '#f1c9a0'; g.beginPath(); g.arc(-2, 0, 4, 0, TAU); g.fill(); g.restore(); return; }
+  if (d.type === 'tractor') { g.fillStyle = '#1e1e1e'; g.fillRect(-d.L / 2 + 2, -d.W / 2 - 3, 22, 8); g.fillRect(-d.L / 2 + 2, d.W / 2 - 5, 22, 8); g.fillRect(d.L / 2 - 16, -d.W / 2 + 1, 12, 6); g.fillRect(d.L / 2 - 16, d.W / 2 - 7, 12, 6); }
+  g.fillStyle = col; rr(g, -d.L / 2, -d.W / 2 + (d.type === 'tractor' ? 5 : 0), d.L, d.W - (d.type === 'tractor' ? 10 : 0), Math.min(6, d.W / 3)); g.fill();
+  if (d.type === 'milk') { g.fillStyle = '#d9d9d9'; rr(g, -d.L / 2 + 2, -d.W / 2 + 3, d.L * .68, d.W - 6, 10); g.fill(); g.fillStyle = '#2c6fb5'; g.fillRect(-d.L / 2 + 10, -2, d.L * .5, 4); g.fillStyle = 'rgba(20,30,40,.8)'; rr(g, d.L * .3, -d.W / 2 + 4, d.L * .12, d.W - 8, 3); g.fill(); }
+  else if (d.type === 'tractor') { g.fillStyle = 'rgba(20,30,40,.7)'; rr(g, -d.L * .3, -d.W / 2 + 9, d.L * .3, d.W - 18, 3); g.fill(); g.fillStyle = shade(col, -.25); g.fillRect(0, -d.W / 2 + 9, d.L / 2 - 4, d.W - 18); }
+  else { g.fillStyle = 'rgba(20,30,40,.75)'; rr(g, d.L * .06, -d.W / 2 + 3, d.L * .18, d.W - 6, 3); g.fill(); g.fillStyle = 'rgba(255,255,255,.2)'; rr(g, -d.L * .32, -d.W / 2 + 3, d.L * .3, d.W - 6, 3); g.fill(); }
+  g.fillStyle = '#fff6c8'; g.fillRect(d.L / 2 - 2, -d.W / 2 + 2, 2, 3); g.fillRect(d.L / 2 - 2, d.W / 2 - 5, 2, 3);
+  if (v.ctrl && v.ctrl.thr < 0 && v.vf > 5) { g.fillStyle = '#ff3b2a'; g.fillRect(-d.L / 2 - 1, -d.W / 2 + 2, 2, 4); g.fillRect(-d.L / 2 - 1, d.W / 2 - 6, 2, 4); }
+  g.restore();
+}
+/* pseudo-3D building (render.js drawBuilding, simplified) */
+function drawBuilding(g, b, cx, cy, pk) {
+  const base = rectPoly(b), k = 1 + b.h * pk, top = base.map(p => [cx + (p[0] - cx) * k, cy + (p[1] - cy) * k]);
+  const wc = b.wall || '#efe6d6';
+  for (let i = 0; i < 4; i++) {
+    const a = base[i], bb = base[(i + 1) % 4], ta = top[i], tb = top[(i + 1) % 4];
+    const ex = bb[0] - a[0], ey = bb[1] - a[1], l = hyp(ex, ey) || 1, nx = ey / l, ny = -ex / l;
+    g.fillStyle = shade(wc, (-nx * .55 - ny * .75) * .22 - .1);
+    g.beginPath(); g.moveTo(a[0], a[1]); g.lineTo(bb[0], bb[1]); g.lineTo(tb[0], tb[1]); g.lineTo(ta[0], ta[1]); g.closePath(); g.fill();
+  }
+  g.fillStyle = b.roof || '#b5452e'; g.beginPath(); top.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.fill();
+  g.strokeStyle = 'rgba(0,0,0,.18)'; g.lineWidth = 1; g.stroke();
+  const m1 = [(top[0][0] + top[3][0]) / 2, (top[0][1] + top[3][1]) / 2], m2 = [(top[1][0] + top[2][0]) / 2, (top[1][1] + top[2][1]) / 2];
+  if (b.hw > b.hh) { g.strokeStyle = 'rgba(255,255,255,.22)'; g.beginPath(); g.moveTo(m1[0], m1[1]); g.lineTo(m2[0], m2[1]); g.stroke(); }
+}
+const ROOFS = ['#b5452e', '#c4583a', '#8a8f94', '#d8cfbc', '#a8452f', '#6f7d86'];
+
+/* =================================================================
+   deck: slides, nav, hash routing, demo registry
+   ================================================================= */
+const slides = $$('.slide'), DEMO = {}; let cur = 0;
+function reg(key, fn) { (DEMO[key] = DEMO[key] || []).push({ fn, inst: null }); }
+const sel = $('#chapSel'), dots = $('#dots'), toc = $('#toc');
+slides.forEach((s, i) => {
+  const o = document.createElement('option'); o.value = i; o.textContent = `${i + 1}. ${s.dataset.title}`; sel.appendChild(o);
+  const d = document.createElement('button'); d.setAttribute('aria-label', s.dataset.title); d.onclick = () => go(i); dots.appendChild(d);
+  if (i > 0) { const li = document.createElement('li'); li.innerHTML = `<a href="#${s.dataset.key}"><span class="no">${i + 1}</span><span><span class="t">${s.dataset.title}</span><span class="d">${s.dataset.desc || ''}</span></span></a>`; toc.appendChild(li); }
+});
+function show(i) {
+  i = clamp(i, 0, slides.length - 1); cur = i;
+  slides.forEach((s, j) => { s.hidden = j !== i; });
+  sel.value = i; [...dots.children].forEach((d, j) => d.setAttribute('aria-current', j === i ? 'true' : 'false'));
+  $('#prevB').disabled = i === 0; $('#nextB').disabled = i === slides.length - 1;
+  $('#hint').textContent = slides[i].dataset.drive ? 'חיצים = נהיגה · PageUp/PageDown = פרק' : '← הבא · → הקודם';
+  for (const k in keys) keys[k] = false;
+  for (const d of DEMO[slides[i].dataset.key] || []) if (!d.inst) d.inst = d.fn();
+}
+function go(i) { i = clamp(i, 0, slides.length - 1); const k = slides[i].dataset.key; if (location.hash.slice(1) !== k) location.hash = k; else show(i); }
+function fromHash() { const k = location.hash.slice(1); const i = slides.findIndex(s => s.dataset.key === k); show(i >= 0 ? i : 0); if (i >= 0) slides[i].scrollTop = 0; }
+addEventListener('hashchange', fromHash);
+sel.onchange = () => go(+sel.value);
+$('#prevB').onclick = () => go(cur - 1); $('#nextB').onclick = () => go(cur + 1);
+addEventListener('keydown', e => {
+  const t = e.target; if (t && (t.tagName === 'INPUT' && t.type !== 'checkbox' && t.type !== 'range' || t.tagName === 'SELECT' || t.tagName === 'TEXTAREA')) return;
+  const drive = !!slides[cur].dataset.drive;
+  if (drive && DRIVE_KEYS.includes(e.code)) { keys[e.code] = true; e.preventDefault(); return; }
+  if (t && t.type === 'range') return;
+  if (e.key === 'PageDown' || (!drive && e.key === 'ArrowLeft')) { e.preventDefault(); go(cur + 1); }
+  else if (e.key === 'PageUp' || (!drive && e.key === 'ArrowRight')) { e.preventDefault(); go(cur - 1); }
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+
+/* =================================================================
+   2. loop
+   ================================================================= */
+reg('loop', () => {
+  const cv = $('#cvLoop'), fpsR = $('#fpsR'), out = $('#fpsOut'), list = $$('#phases li');
+  const lanes = [
+    { name: 'צעד קבוע לכל פריים', pos: 0, trail: [], col: '#ff7356' },
+    { name: 'מוכפל ב-dt, בלי תקרה', pos: 0, trail: [], col: '#5cc0f2' },
+    { name: 'מוכפל ב-dt עם תקרה (המשחק)', pos: 0, trail: [], col: '#f2c230' }];
+  let acc = 0, slow = -1, slowT = 0; const LEN = 640;
+  $('#slowBtn').onclick = () => { slow = 0; slowT = 0; };
+  function step(dt) { const d = [2, 120 * dt, 120 * Math.min(dt, .05)]; lanes.forEach((l, i) => { l.pos += d[i]; l.trail.push(l.pos); if (l.trail.length > 5) l.trail.shift(); }); }
+  return { frame(rdt) {
+    const fps = +fpsR.value, st = 1 / fps; acc += rdt; let n = 0; while (acc >= st && n < 8) { acc -= st; step(st); n++; } if (n >= 8) acc = 0;
+    out.textContent = `${fps} · dt ${(st * 1000).toFixed(1)}ms · אחרי תקרה ${(Math.min(st, .05) * 1000).toFixed(1)}ms`;
+    const F = fit(cv), { g, w, h } = F; g.fillStyle = '#23261f'; g.fillRect(0, 0, w, h);
+    const pad = 12, lh = (h - pad * 2) / 3, sx = (w - pad * 2 - 34) / LEN;
+    lanes.forEach((l, i) => {
+      const y = pad + lh * i + lh * .62;
+      g.fillStyle = '#3a3f33'; g.fillRect(pad, y - lh * .22, w - pad * 2, lh * .44);
+      g.fillStyle = 'rgba(255,255,255,.16)'; for (let x = pad; x < w - pad; x += 26) g.fillRect(x, y - 1, 12, 2);
+      l.trail.forEach((p, j) => { const x = pad + (p % LEN) * sx; g.globalAlpha = .1 + .1 * j; g.fillStyle = l.col; g.fillRect(x, y - 7, 34, 14); });
+      g.globalAlpha = 1; const x = pad + (l.pos % LEN) * sx; g.fillStyle = l.col; rr(g, x, y - 8, 34, 16, 4); g.fill();
+      g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(x + 20, y - 6, 6, 12);
+      txt(g, l.name, w - pad - 4, y - lh * .22 - 9, 12, '#e9e4d0', 'right');
+    });
+    if (slow >= 0) { slowT += rdt; if (slowT > .6) { slowT = 0; slow++; } list.forEach((li, i) => li.classList.toggle('on', i === slow)); if (slow >= list.length) { slow = -1; list.forEach(li => li.classList.remove('on')); } }
+  } };
+});
+
+/* =================================================================
+   3. camera
+   ================================================================= */
+reg('camera', () => {
+  const cv = $('#cvCam'), kR = $('#camK'), laR = $('#camLA'), zC = $('#camZoom'), manC = $('#camManual'), hud = $('#camHud');
+  const R = RNG(7), B = 320, houses = [];
+  for (let bx = -6; bx < 6; bx++) for (let by = -5; by < 5; by++) { const n = 1 + (R() * 3 | 0); for (let i = 0; i < n; i++) houses.push(mkRect(bx * B + B / 2 + rr2(R, -80, 80), by * B + B / 2 + rr2(R, -80, 80), rr2(R, 18, 36), rr2(R, 14, 26), rr2(R, -.3, .3), { roof: ROOFS[R() * ROOFS.length | 0], h: 26 })); }
+  const trees = []; for (let i = 0; i < 140; i++) trees.push({ x: rr2(R, -1900, 1900), y: rr2(R, -1600, 1600), r: rr2(R, 8, 15) });
+  let t = 0, s = 0, shake = 0; const cam = { x: 900, y: 0, z: 1 }, car = mkCar('car', 900, 0, Math.PI / 2);
+  $('#camShake').onclick = () => { shake = Math.min(9, shake + 7); };
+  manC.onchange = () => { if (!manC.checked) { s = Math.atan2(car.y / 520, car.x / 900); } car.vx = car.vy = 0; };
+  return { frame(dt) {
+    t += dt; $('#camKo').textContent = (+kR.value).toFixed(1); $('#camLAo').textContent = (+laR.value).toFixed(2) + 's';
+    if (!manC.checked) {
+      s += (.17 + .09 * Math.sin(t * .45)) * dt; const nx = Math.cos(s) * 900, ny = Math.sin(2 * s) * 520;
+      if (dt > 0) { car.vx = (nx - car.x) / dt; car.vy = (ny - car.y) / dt; if (hyp(car.vx, car.vy) > 700) car.vx = car.vy = 0; else car.a = Math.atan2(car.vy, car.vx); }
+      car.x = nx; car.y = ny; car.ctrl.thr = 1;
+    } else {
+      car.ctrl.thr = (K('ArrowUp', 'KeyW') ? 1 : 0) - (K('ArrowDown', 'KeyS') ? 1 : 0); car.ctrl.steer = (K('ArrowRight', 'KeyD') ? 1 : 0) - (K('ArrowLeft', 'KeyA') ? 1 : 0); car.ctrl.hb = K('Space');
+      carPhysics(car, dt, MAT.ROAD); car.x = clamp(car.x, -1900, 1900); car.y = clamp(car.y, -1600, 1600);
+    }
+    const la = +laR.value, k = +kR.value, tx = car.x + car.vx * la, ty = car.y + car.vy * la;
+    cam.x += (tx - cam.x) * Math.min(1, dt * k); cam.y += (ty - cam.y) * Math.min(1, dt * k);
+    const sp = hyp(car.vx, car.vy), tz = zC.checked ? 1.02 - Math.min(.36, sp / 650) : 1; cam.z += (tz - cam.z) * Math.min(1, dt * 1.8);
+    const sx = (Math.random() - .5) * shake * 2, sy = (Math.random() - .5) * shake * 2; shake *= Math.exp(-7 * dt);
+    const F = fit(cv), { g, w, h } = F, ppu = w / 760 * cam.z;
+    view(F, cam.x, cam.y, ppu, sx, sy);
+    const hw = w / 2 / ppu + 60, hh = h / 2 / ppu + 60;
+    g.fillStyle = '#62a845'; g.fillRect(cam.x - hw, cam.y - hh, hw * 2, hh * 2);
+    g.fillStyle = '#4c4e52';
+    for (let x = Math.floor((cam.x - hw) / B) * B; x < cam.x + hw; x += B) g.fillRect(x - 17, cam.y - hh, 34, hh * 2);
+    for (let y = Math.floor((cam.y - hh) / B) * B; y < cam.y + hh; y += B) g.fillRect(cam.x - hw, y - 17, hw * 2, 34);
+    g.fillStyle = 'rgba(255,255,255,.35)';
+    for (let x = Math.floor((cam.x - hw) / B) * B; x < cam.x + hw; x += B) for (let y = cam.y - hh - ((cam.y - hh) % 40); y < cam.y + hh; y += 40) g.fillRect(x - 1, y, 2, 18);
+    for (const tr of trees) if (Math.abs(tr.x - cam.x) < hw && Math.abs(tr.y - cam.y) < hh) { g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.arc(tr.x + 3, tr.y + 3, tr.r, 0, TAU); g.fill(); g.fillStyle = '#3f7a32'; g.beginPath(); g.arc(tr.x, tr.y, tr.r, 0, TAU); g.fill(); }
+    for (const b of houses) if (Math.abs(b.x - cam.x) < hw && Math.abs(b.y - cam.y) < hh) drawBuilding(g, b, cam.x, cam.y, .00125 * cam.z);
+    g.strokeStyle = 'rgba(242,194,48,.8)'; g.setLineDash([6, 6]); g.lineWidth = 2 / ppu * 1.2; g.beginPath(); g.moveTo(car.x, car.y); g.lineTo(tx, ty); g.stroke(); g.setLineDash([]);
+    drawVeh(g, car);
+    g.strokeStyle = '#f2c230'; g.lineWidth = 3 / ppu; g.beginPath(); g.arc(tx, ty, 14 / ppu, 0, TAU); g.stroke();
+    screenT(F); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(w / 2 - 12, h / 2); g.lineTo(w / 2 + 12, h / 2); g.moveTo(w / 2, h / 2 - 12); g.lineTo(w / 2, h / 2 + 12); g.stroke();
+    setHTML(hud, `מהירות <b>${sp | 0}</b> · זום <b>${cam.z.toFixed(2)}</b> · המצלמה מאחרת ב-<b>${hyp(cam.x - car.x, cam.y - car.y) | 0}</b> יחידות`);
+  } };
+});
+
+/* =================================================================
+   4. world as data
+   ================================================================= */
+reg('world', () => {
+  const cv = $('#cvWorld'), hud = $('#worldHud'), noGrid = $('#worldNoGrid'), P = trackPointer(cv);
+  const WW = 1280, WH = 800, MC = 8, GW = WW / MC, GH = WH / MC, R = RNG(42);
+  const hash = (x, y) => { const s = Math.sin(x * 127.1 + y * 311.7) * 43758.5453; return s - Math.floor(s); };
+  const matAt = (x, y) => {
+    const j = hash(Math.floor(x / 8), Math.floor(y / 8)) * 14;
+    if (Math.abs(y - 410) < 16 || Math.abs(x - 720) < 16) return MAT.ROAD;
+    if (hyp(x - 300, y - 650) < 72 + j * .4) return MAT.WATER;
+    if (hyp(x - 560, y - 650) < 80 + j) return MAT.SAND;
+    if (x > 110 && x < 610 + j && y > 90 && y < 380 + j * .5) return MAT.GRASS;
+    if (x > 750 + j && y < 380 + j * .5) return MAT.WHEAT;
+    if (x > 760 + j && y > 440 - j * .3) return MAT.PLOWED;
+    if (x > 980 + j && x < 1040 && y > 520 && y < 560) return MAT.MUD;
+    return MAT.DRY;
+  };
+  const off = document.createElement('canvas'); off.width = GW; off.height = GH; const og = off.getContext('2d');
+  for (let cy = 0; cy < GH; cy++) for (let cx = 0; cx < GW; cx++) { og.fillStyle = matAt(cx * MC + 4, cy * MC + 4).col; og.fillRect(cx, cy, 1, 1); }
+  const objs = [];
+  for (let tries = 0; objs.length < 320 && tries < 4000; tries++) {
+    const x = rr2(R, 20, WW - 20), y = rr2(R, 20, WH - 20), m = matAt(x, y); if (m.road || m.water) continue;
+    if (m === MAT.GRASS || m === MAT.DRY && R() < .5) { const o = mkRect(x, y, rr2(R, 9, 20), rr2(R, 7, 14), rr2(R, -.5, .5)); if (Math.abs(y - 410) < 40 || Math.abs(x - 720) < 40) continue; o.kind = 'house'; objs.push(o); }
+    else objs.push({ x, y, r: rr2(R, 5, 10), kind: 'tree' });
+  }
+  const CELL = 128, grid = new Map(), gkey = (a, b) => a * 100 + b;
+  for (const o of objs) { const r = o.r || Math.max(o.hw, o.hh) * 1.2; for (let a = Math.floor((o.x - r) / CELL); a <= Math.floor((o.x + r) / CELL); a++) for (let b = Math.floor((o.y - r) / CELL); b <= Math.floor((o.y + r) / CELL); b++) { const k = gkey(a, b); if (!grid.has(k)) grid.set(k, []); grid.get(k).push(o); } }
+  let t = 0;
+  return { frame(dt) {
+    t += dt; const F = fit(cv), { g, w, h } = F, ppu = w / WW;
+    let qx, qy; if (P.recent(3000)) { qx = P.x / ppu; qy = P.y / ppu; } else { qx = 640 + Math.cos(t * .33) * 470; qy = 400 + Math.sin(t * .57) * 290; }
+    const qr = 26; view(F, WW / 2, WH / 2, ppu);
+    g.imageSmoothingEnabled = false; g.drawImage(off, 0, 0, WW, WH); g.imageSmoothingEnabled = true;
+    const cells = [], cand = new Set();
+    if (!noGrid.checked) { for (let a = Math.floor((qx - qr) / CELL); a <= Math.floor((qx + qr) / CELL); a++) for (let b = Math.floor((qy - qr) / CELL); b <= Math.floor((qy + qr) / CELL); b++) { cells.push([a, b]); for (const o of grid.get(gkey(a, b)) || []) cand.add(o); } }
+    else for (const o of objs) cand.add(o);
+    g.strokeStyle = 'rgba(255,255,255,.14)'; g.lineWidth = 1 / ppu;
+    for (let x = 0; x <= WW; x += CELL) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, WH); g.stroke(); }
+    for (let y = 0; y <= WH; y += CELL) { g.beginPath(); g.moveTo(0, y); g.lineTo(WW, y); g.stroke(); }
+    for (const [a, b] of cells) { g.fillStyle = 'rgba(242,194,48,.18)'; g.fillRect(a * CELL, b * CELL, CELL, CELL); g.strokeStyle = 'rgba(242,194,48,.9)'; g.lineWidth = 2 / ppu; g.strokeRect(a * CELL, b * CELL, CELL, CELL); }
+    let hits = 0;
+    for (const o of objs) {
+      const c = cand.has(o), hit = c && shapePush(o, qx, qy, qr); if (hit) hits++;
+      g.globalAlpha = c || noGrid.checked ? 1 : .55;
+      if (o.kind === 'tree') { g.fillStyle = hit ? '#ff5a3c' : '#2f6a28'; g.beginPath(); g.arc(o.x, o.y, o.r, 0, TAU); g.fill(); }
+      else { const p = rectPoly(o); g.fillStyle = hit ? '#ff5a3c' : '#e9dfcb'; g.beginPath(); p.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.fill(); g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 1 / ppu; g.stroke(); }
+      if (c && !noGrid.checked) { g.strokeStyle = '#f2c230'; g.lineWidth = 2.2 / ppu; g.beginPath(); if (o.kind === 'tree') g.arc(o.x, o.y, o.r + 2, 0, TAU); else { const p = rectPoly(o); p.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); } g.stroke(); }
+    }
+    g.globalAlpha = 1;
+    g.fillStyle = 'rgba(92,192,242,.35)'; g.strokeStyle = '#5cc0f2'; g.lineWidth = 2.5 / ppu; g.beginPath(); g.arc(qx, qy, qr, 0, TAU); g.fill(); g.stroke();
+    const m = matAt(qx, qy), flags = [m.lawn ? '<span class="bad">דשא: עבירה</span>' : '', m.water ? '<span class="bad">מים: המנוע מוצף</span>' : '', m.crop ? 'יבול: נדרס לאדמה' : ''].filter(Boolean).join(' · ');
+    setHTML(hud, `מתחת לרכב: <b>${m.name}</b> · אחיזה ${m.grip} · גרר ${m.drag}${flags ? ' · ' + flags : ''}<br>נבדקו <b>${cand.size}</b> מתוך ${objs.length} אובייקטים · התנגשויות <b>${hits}</b>`);
+  } };
+});
+
+/* =================================================================
+   5. collisions
+   ================================================================= */
+reg('collide', () => {
+  const cv = $('#cvCol'), hud = $('#colHud'), offC = $('#colOff'), P = trackPointer(cv);
+  const WW = 900, WH = 560;
+  const shapes = [mkRect(270, 175, 92, 54, .25, { wall: '#d8cfbc', roof: '#b5452e', h: 0 }), mkRect(650, 330, 68, 108, -.35, { wall: '#cfd8de', roof: '#8a8f94', h: 0 }), mkRect(330, 440, 125, 38, .05, { wall: '#e6d8bc', roof: '#c4583a', h: 0 }),
+    { x: 520, y: 120, r: 17, tree: 1 }, { x: 770, y: 110, r: 14, tree: 1 }, { x: 120, y: 330, r: 19, tree: 1 }, { x: 590, y: 490, r: 15, tree: 1 }];
+  const truck = mkCar('milk', 110, 110, 0), wps = [[460, 190], [820, 300], [480, 320], [180, 450], [640, 470], [120, 110], [760, 520], [300, 60]];
+  let wi = 0, arrows = [], lastPen = 0, lastPenT = 0;
+  return { frame(dt) {
+    const F = fit(cv), { g, w, h } = F, ppu = w / WW; view(F, WW / 2, WH / 2, ppu);
+    let tx, ty; if (P.recent(2500)) { tx = P.x / ppu; ty = P.y / ppu; } else { [tx, ty] = wps[wi]; if (hyp(tx - truck.x, ty - truck.y) < 40) wi = (wi + 1) % wps.length; }
+    const d = hyp(tx - truck.x, ty - truck.y), want = Math.atan2(ty - truck.y, tx - truck.x);
+    if (d > 8) { truck.a += clamp(angDiff(truck.a, want), -1, 1) * dt * 3; const sp = clamp(d * 1.6, 0, 150); truck.x += Math.cos(truck.a) * sp * dt; truck.y += Math.sin(truck.a) * sp * dt; }
+    truck.x = clamp(truck.x, 40, WW - 40); truck.y = clamp(truck.y, 30, WH - 30);
+    const overl = new Set();
+    if (!offC.checked) resolveStatic(truck, shapes, (c, k) => { arrows.push({ x: c.x, y: c.y, nx: k.nx, ny: k.ny, pen: k.pen, life: .45 }); lastPen = k.pen; lastPenT = 1.5; });
+    else for (const c of carCircles(truck)) for (const s of shapes) if (shapePush(s, c.x, c.y, c.r)) overl.add(s);
+    g.fillStyle = '#b3a663'; g.fillRect(0, 0, WW, WH);
+    g.fillStyle = 'rgba(0,0,0,.05)'; for (let i = 0; i < 90; i++) { const x = (i * 97) % WW, y = (i * 53) % WH; g.fillRect(x, y, 3, 3); }
+    for (const s of shapes) {
+      const hit = overl.has(s);
+      if (s.tree) { g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.arc(s.x + 4, s.y + 4, s.r, 0, TAU); g.fill(); g.fillStyle = hit ? '#ff5a3c' : '#3f7a32'; g.beginPath(); g.arc(s.x, s.y, s.r, 0, TAU); g.fill(); }
+      else { const p = rectPoly(s); g.fillStyle = hit ? '#ff5a3c' : s.wall; g.beginPath(); p.forEach((q, i) => i ? g.lineTo(q[0], q[1]) : g.moveTo(q[0], q[1])); g.closePath(); g.fill(); g.strokeStyle = 'rgba(0,0,0,.3)'; g.lineWidth = 1.5; g.stroke(); }
+    }
+    drawVeh(g, truck);
+    for (const c of carCircles(truck)) { g.strokeStyle = '#f2c230'; g.setLineDash([4, 3]); g.lineWidth = 1.6; g.beginPath(); g.arc(c.x, c.y, c.r, 0, TAU); g.stroke(); g.setLineDash([]); }
+    for (let i = arrows.length - 1; i >= 0; i--) { const a = arrows[i]; a.life -= dt; if (a.life <= 0) { arrows.splice(i, 1); continue; } g.globalAlpha = a.life / .45; arrow(g, a.x, a.y, a.nx * (a.pen * 3 + 10), a.ny * (a.pen * 3 + 10), '#ff4a2a', 2.4); }
+    g.globalAlpha = 1; if (arrows.length > 60) arrows.splice(0, arrows.length - 60);
+    if (P.recent(2500)) { g.strokeStyle = '#5cc0f2'; g.lineWidth = 2; g.beginPath(); g.arc(tx, ty, 8, 0, TAU); g.stroke(); }
+    lastPenT -= dt;
+    setHTML(hud, `מכלית חלב: <b>${truck.d.n}</b> עיגולים ברדיוס ${truck.d.W / 2} · ${offC.checked ? '<span class="bad">פתרון כבוי: עוברת דרך הכל</span>' : lastPenT > 0 ? `חדירה אחרונה <b>${lastPen.toFixed(1)}</b> יחידות, נדחפה החוצה` : 'אין מגע'}`);
+  } };
+});
+
+/* =================================================================
+   6. driving
+   ================================================================= */
+reg('drive', () => {
+  const cv = $('#cvDrive'), hud = $('#drvHud'), toast = toaster($('#drvToast'));
+  const WW = 1400, WH = 900;
+  const sdRR = (x, y) => { const qx = Math.abs(x - 700) - (560 - 150), qy = Math.abs(y - 450) - (330 - 150); return hyp(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - 150; };
+  const matAt = (x, y) => {
+    if (Math.abs(sdRR(x, y)) < 32) return MAT.ROAD;
+    if (hyp(x - 450, y - 640) < 80) return MAT.WATER;
+    if (((x - 930) / 120) ** 2 + ((y - 600) / 70) ** 2 < 1) return MAT.MUD;
+    if (hyp(x - 980, y - 320) < 115) return MAT.SAND;
+    if (x > 250 && x < 660 && y > 220 && y < 500) return MAT.GRASS;
+    return MAT.DRY;
+  };
+  const ground = document.createElement('canvas'); ground.width = WW; ground.height = WH; { const g = ground.getContext('2d'); const R = RNG(3);
+    g.fillStyle = MAT.DRY.col; g.fillRect(0, 0, WW, WH); for (let i = 0; i < 2600; i++) { g.fillStyle = R() < .5 ? 'rgba(0,0,0,.05)' : 'rgba(255,255,255,.06)'; g.fillRect(R() * WW, R() * WH, 2 + R() * 3, 2 + R() * 3); }
+    g.fillStyle = MAT.GRASS.col; g.fillRect(250, 220, 410, 280); g.fillStyle = 'rgba(255,255,255,.06)'; for (let x = 250; x < 660; x += 24) g.fillRect(x, 220, 12, 280);
+    g.fillStyle = MAT.SAND.col; g.beginPath(); g.arc(980, 320, 115, 0, TAU); g.fill();
+    g.fillStyle = MAT.MUD.col; g.beginPath(); g.ellipse(930, 600, 120, 70, 0, 0, TAU); g.fill();
+    g.fillStyle = MAT.WATER.col; g.beginPath(); g.arc(450, 640, 80, 0, TAU); g.fill(); g.strokeStyle = 'rgba(255,255,255,.25)'; g.lineWidth = 3; g.stroke();
+    g.strokeStyle = MAT.ROAD.col; g.lineWidth = 64; rr(g, 140, 120, 1120, 660, 150); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.5)'; g.lineWidth = 2.5; g.setLineDash([18, 16]); rr(g, 140, 120, 1120, 660, 150); g.stroke(); g.setLineDash([]);
+    g.font = '600 22px Heebo, sans-serif'; g.fillStyle = 'rgba(0,0,0,.35)'; g.textAlign = 'center'; g.direction = 'rtl';
+    g.fillText('דשא (עבירה!)', 455, 365); g.fillText('חול', 980, 325); g.fillText('בוץ', 930, 605); g.fillText('בריכה', 450, 645);
+  }
+  const skids = document.createElement('canvas'); skids.width = WW; skids.height = WH; const sg = skids.getContext('2d');
+  const blds = [mkRect(780, 450, 46, 30, .3, { h: 30, roof: '#c4583a' }), mkRect(640, 620, 32, 22, -.2, { h: 26, roof: '#8a8f94' }), mkRect(1150, 460, 36, 26, 0, { h: 34, roof: '#b5452e', wall: '#cfd8de' })];
+  let type = 'car', car, cam, heat, skidT, lw, deadT, shake;
+  function reset() { car = mkCar(type, 700, 780, 0); car.lw = null; cam = { x: car.x, y: car.y, z: 1 }; heat = 0; skidT = 0; lw = null; deadT = 0; shake = 0; }
+  reset();
+  segGroup($('#drvVeh'), d => { type = d.v; const o = car; reset(); car.x = o.x; car.y = o.y; car.a = o.a; });
+  $('#drvReset').onclick = () => { reset(); sg.clearRect(0, 0, WW, WH); };
+  return { frame(dt) {
+    const c = car.ctrl;
+    if (deadT > 0) { deadT -= dt; c.thr = c.steer = 0; c.hb = false; if (deadT <= 0) reset(); }
+    else { c.thr = (K('ArrowUp', 'KeyW') ? 1 : 0) - (K('ArrowDown', 'KeyS') ? 1 : 0); c.steer = (K('ArrowRight', 'KeyD') ? 1 : 0) - (K('ArrowLeft', 'KeyA') ? 1 : 0); c.hb = K('Space'); }
+    const m = matAt(car.x, car.y); carPhysics(car, dt, m);
+    if (m.water && car.d.off < 1.5) { car.flood += dt; if (car.flood > 1.2 && deadT <= 0) { deadT = 1.6; toast.show('המנוע הוצף!'); } } else car.flood = Math.max(0, car.flood - dt);
+    const imp = resolveStatic(car, blds); if (imp > 55) { toast.show(imp > 120 ? 'בום!' : 'טראח', 1); shake = Math.min(9, shake + imp / 40); }
+    if (car.x < 25) { car.x = 25; car.vx = Math.abs(car.vx) * .3; } if (car.x > WW - 25) { car.x = WW - 25; car.vx = -Math.abs(car.vx) * .3; }
+    if (car.y < 25) { car.y = 25; car.vy = Math.abs(car.vy) * .3; } if (car.y > WH - 25) { car.y = WH - 25; car.vy = -Math.abs(car.vy) * .3; }
+    skidT -= dt;
+    if (skidT <= 0) { skidT = .045; const c2 = Math.cos(car.a), s2 = Math.sin(car.a), d = car.d;
+      const side = Math.abs(car.vl) > 55 && Math.abs(car.vf) > 50, hard = c.thr < 0 && car.vf > 120 && m.road;
+      if ((side || hard || c.hb && Math.abs(car.vf) > 60) && d.type !== 'bike') { const rx = car.x - c2 * d.L * .32, ry = car.y - s2 * d.L * .32; const now = {};
+        for (const o of [-1, 1]) { const wx = rx - s2 * o * d.W * .38, wy = ry + c2 * o * d.W * .38; if (lw && lw[o]) { sg.strokeStyle = m.road ? 'rgba(20,20,20,.55)' : 'rgba(60,40,20,.4)'; sg.lineWidth = d.W > 30 ? 4 : 2.6; sg.lineCap = 'round'; sg.beginPath(); sg.moveTo(lw[o][0], lw[o][1]); sg.lineTo(wx, wy); sg.stroke(); } now[o] = [wx, wy]; }
+        lw = now; } else lw = null; }
+    const sp = hyp(car.vx, car.vy); if (m.lawn && sp > 20) heat += .32 * dt * (car.d.mass > 15 ? 1.8 : 1);
+    const tx = car.x + car.vx * .42, ty = car.y + car.vy * .42; cam.x += (tx - cam.x) * Math.min(1, dt * 4.5); cam.y += (ty - cam.y) * Math.min(1, dt * 4.5);
+    const tz = 1.02 - Math.min(.36, sp / 650) - (car.d.L > 70 ? .12 : 0); cam.z += (tz - cam.z) * Math.min(1, dt * 1.8);
+    const sx = (Math.random() - .5) * shake, sy = (Math.random() - .5) * shake; shake *= Math.exp(-7 * dt);
+    const F = fit(cv), { g, w, h } = F, ppu = w / 620 * cam.z; view(F, cam.x, cam.y, ppu, sx, sy);
+    g.fillStyle = '#8f8556'; g.fillRect(-400, -400, WW + 800, WH + 800);
+    g.drawImage(ground, 0, 0); g.drawImage(skids, 0, 0);
+    const blsorted = blds.slice().sort((a, b) => hyp(b.x - cam.x, b.y - cam.y) - hyp(a.x - cam.x, a.y - cam.y));
+    drawVeh(g, car);
+    for (const b of blsorted) drawBuilding(g, b, cam.x, cam.y, .00125 * Math.min(1.2, cam.z));
+    const c2 = Math.cos(car.a), s2 = Math.sin(car.a);
+    arrow(g, car.x, car.y, c2 * car.vf * .3, s2 * car.vf * .3, '#9be26b', 3 / ppu * 1.2);
+    arrow(g, car.x, car.y, -s2 * car.vl * .3, c2 * car.vl * .3, '#ff5a3c', 3 / ppu * 1.2);
+    toast.tick(dt);
+    const grip = (car.d.grip * lerp(m.grip, 1, car.d.off * .8)).toFixed(1);
+    setHTML(hud, `${car.d.name} על <b>${m.name}</b> · אחיזה אפקטיבית <b>${grip}</b><br>vf <b>${car.vf.toFixed(0)}</b> · vl <b>${car.vl.toFixed(0)}</b>${c.hb ? ' · <span class="bad">בלם יד</span>' : ''}${car.flood > 0 ? ` · <span class="bad">מים ${car.flood.toFixed(1)}/1.2</span>` : ''}<br>רוגז שנצבר על הדשא <b>${heat.toFixed(2)}</b>`);
+  } };
+});
+
+/* =================================================================
+   7. plane
+   ================================================================= */
+reg('plane', () => {
+  const cv = $('#cvPlane'), hud = $('#plHud'), toast = toaster($('#plToast'));
+  const WW = 3000, WH = 2000, SUNX = .55, SUNY = .45;
+  const runway = { x0: 340, x1: 1460, y0: 968, y1: 1032 };
+  const matAt = (x, y) => {
+    if (x > runway.x0 && x < runway.x1 && y > runway.y0 && y < runway.y1) return MAT.ROAD;
+    if (hyp(x - 1600, y - 1620) < 140) return MAT.WATER;
+    if (x > 1780 && x < 2720 && y > 600 && y < 1400) return MAT.GRASS;
+    if (x > 200 && x < 1250 && y > 200 && y < 860) return MAT.WHEAT;
+    if (x > 200 && x < 1250 && y > 1140 && y < 1800) return MAT.PLOWED;
+    return MAT.DRY;
+  };
+  const S = .5, ground = document.createElement('canvas'); ground.width = WW * S; ground.height = WH * S;
+  { const g = ground.getContext('2d'); g.scale(S, S); const R = RNG(11);
+    g.fillStyle = MAT.DRY.col; g.fillRect(0, 0, WW, WH);
+    g.fillStyle = MAT.WHEAT.col; g.fillRect(200, 200, 1050, 660); g.strokeStyle = 'rgba(120,90,30,.25)'; g.lineWidth = 3; for (let y = 210; y < 860; y += 14) { g.beginPath(); g.moveTo(200, y); g.lineTo(1250, y); g.stroke(); }
+    g.fillStyle = MAT.PLOWED.col; g.fillRect(200, 1140, 1050, 660); g.strokeStyle = 'rgba(0,0,0,.18)'; for (let x = 210; x < 1250; x += 12) { g.beginPath(); g.moveTo(x, 1140); g.lineTo(x, 1800); g.stroke(); }
+    g.fillStyle = '#66a43f'; g.fillRect(1300, 200, 380, 660);
+    g.fillStyle = MAT.GRASS.col; g.fillRect(1780, 600, 940, 800);
+    g.fillStyle = MAT.WATER.col; g.beginPath(); g.arc(1600, 1620, 140, 0, TAU); g.fill();
+    g.fillStyle = MAT.ROAD.col; g.fillRect(runway.x0, runway.y0, runway.x1 - runway.x0, runway.y1 - runway.y0);
+    g.fillStyle = '#fff'; for (let x = runway.x0 + 40; x < runway.x1 - 40; x += 70) g.fillRect(x, 998, 36, 4);
+    for (let i = 0; i < 6; i++) { g.fillRect(runway.x0 + 10, runway.y0 + 8 + i * 9, 26, 4); }
+    g.strokeStyle = '#c5bfae'; g.lineWidth = 22; g.beginPath(); g.moveTo(1460, 1000); g.lineTo(1780, 1000); g.moveTo(2250, 600); g.lineTo(2250, 1400); g.moveTo(1780, 1000); g.lineTo(2720, 1000); g.stroke();
+    for (let i = 0; i < 70; i++) { const x = rr2(R, 1790, 2710), y = rr2(R, 610, 1390); g.fillStyle = '#3f7a32'; g.beginPath(); g.arc(x, y, rr2(R, 9, 16), 0, TAU); g.fill(); }
+    g.font = '700 40px Heebo, sans-serif'; g.fillStyle = 'rgba(0,0,0,.3)'; g.textAlign = 'center'; g.direction = 'rtl'; g.fillText('מנחת המרססים', 900, 940); g.fillText('הקיבוץ', 2250, 580);
+  }
+  const blds = [mkRect(2050, 1000, 82, 56, 0, { h: 46, roof: '#d8cfbc', wall: '#d8cfbc', name: 'חדר האוכל' })];
+  for (const x of [1880, 2290, 2440, 2590]) for (const y of [720, 870, 1130, 1280]) blds.push(mkRect(x, y, 30, 20, (x * 7 + y) % 3 * .08 - .08, { h: 26 + ((x + y) % 3) * 8, roof: ROOFS[(x + y) % ROOFS.length] }));
+  const d = { L: 56, W: 80, CW: 22, n: 3, acc: 150, brake: 220, turn: 1.25 };
+  let v, cam, script = null;
+  function reset() { v = { d, x: 420, y: 1000, a: 0, vx: 0, vy: 0, alt: 0, steer: 0, bank: 0, hp: 320, prop: 0, flood: 0, dead: false, ctrl: { thr: 0, steer: 0, hb: false } }; cam = cam || { x: v.x, y: v.y, z: .9 }; script = null; }
+  reset(); cam = { x: 900, y: 1000, z: .9 }; window.__plane = () => v;
+  $('#plReset').onclick = reset;
+  $('#plDrop').onclick = () => { reset(); Object.assign(v, { x: 1840, y: 1000, a: 0, alt: .42, vx: 200, vy: 0 }); script = 'down'; toast.show('מנמיכים מעל חדר האוכל...', 1.6); };
+  function touchdown(vf) {
+    const m = matAt(v.x, v.y);
+    if (m.water) { v.dead = true; toast.show('המנוע הוצף. נחיתה במאגר', 2.4); return vf * .3; }
+    const onB = blds.find(b => shapePush(b, v.x, v.y, .5));
+    if (onB || vf > 300) { v.hp -= 90 + Math.max(0, vf - 220) * 1.2; toast.show(onB ? `נחיתה קשה! על הגג של ${onB.name || 'בית'}` : 'נחיתה קשה! מהר מדי', 2.4); if (v.hp <= 0) { v.dead = true; toast.show('המטוס התרסק', 2.4); } return vf * .35; }
+    const soft = m.road ? 'נחיתה רכה. כמו פעם' : 'נחיתת שטח. הרכז לא יאהב את זה';
+    if (v.pushMark) toast.show(`נהדף מהבניין בגובה ${v.pushMark.alt.toFixed(3)}, ונחת לידו: ${soft}`, 3.4); else toast.show(soft, 2.2); return vf;
+  }
+  function physics(dt) {
+    const ctrl = v.dead ? { thr: 0, steer: 0, hb: false } : v.ctrl;
+    const c = Math.cos(v.a), s = Math.sin(v.a); let vf = v.vx * c + v.vy * s, vl = -v.vx * s + v.vy * c;
+    if (v.alt <= 0) {
+      const m = matAt(v.x, v.y), drag = m.road ? 1 : m.water ? .3 : Math.max(.5, m.drag * .95);
+      if (ctrl.thr > 0 && !ctrl.hb) vf += d.acc * ctrl.thr * dt * Math.max(0, 1 - vf / (300 * drag));
+      else if (ctrl.thr < 0 || ctrl.hb) { if (vf > 5) vf -= d.brake * dt; else if (ctrl.thr < 0) vf = Math.max(-35, vf - 60 * dt); }
+      else vf *= Math.exp(-.35 * dt);
+      vl *= Math.exp(-14 * dt);
+      v.steer += (ctrl.steer - v.steer) * Math.min(1, dt * 8); v.a += v.steer * 1.8 * dt * clamp(vf / 45, -1, 1);
+      if (vf > 235 && ctrl.thr > 0) { v.alt = .02; toast.show('המראה!', 1.4); }
+      if (m.water) { v.flood += dt; if (v.flood > 1 && !v.dead) { v.dead = true; toast.show('המנוע הוצף', 2); } } else v.flood = 0;
+    } else {
+      const target = ctrl.hb || ctrl.thr < 0 ? 150 : ctrl.thr > 0 ? 440 : 290;
+      vf += (target - vf) * Math.min(1, dt * .45); vl *= Math.exp(-6 * dt);
+      v.steer += (ctrl.steer - v.steer) * Math.min(1, dt * 4); v.a += v.steer * d.turn * dt;
+      if (vf > 215) v.alt = Math.min(1, v.alt + .5 * dt); else v.alt -= ((215 - vf) / 215 * 1.4 + .12) * dt;
+      if (v.alt <= 0) { v.alt = 0; vf = touchdown(vf); if (script) script = null; }
+    }
+    v.bank += ((v.alt > 0 ? v.steer : 0) - v.bank) * Math.min(1, dt * 5);
+    v.prop += dt * (!v.dead ? 40 + Math.abs(vf) * .15 : 0);
+    const c2 = Math.cos(v.a), s2 = Math.sin(v.a); v.vx = vf * c2 - vl * s2; v.vy = vf * s2 + vl * c2; v.x += v.vx * dt; v.y += v.vy * dt; v.vf = vf;
+    v.x = clamp(v.x, 40, WW - 40); v.y = clamp(v.y, 40, WH - 40);
+    if (!(v.alt > .05)) { let pushed = 0; const imp = resolveStatic(v, blds, (c, k) => { pushed = Math.max(pushed, k.pen); }); if (imp > 80) v.hp -= (imp - 80) * .09;
+      if (pushed > 4 && v.alt > 0) { toast.show(`בגובה ${v.alt.toFixed(3)}: נהדף ${pushed.toFixed(0)} יחידות החוצה מהבניין`, 2.6); v.pushMark = { x: v.x, y: v.y, life: 2.5, alt: v.alt }; } else if (imp > 55) toast.show('בום! ישר לקיר', 1.6); }
+  }
+  function body(g, x, y, k, col) {
+    g.save(); g.translate(x, y); g.rotate(v.a); g.scale(k, k * (1 - Math.abs(v.bank) * .22));
+    g.fillStyle = col || '#f2c230'; g.strokeStyle = 'rgba(0,0,0,.35)'; g.lineWidth = 1;
+    g.fillRect(-2, -40, 16, 80); g.strokeRect(-2, -40, 16, 80);
+    g.fillRect(-28, -15, 9, 30); g.strokeRect(-28, -15, 9, 30);
+    rr(g, -28, -5, 56, 10, 4); g.fill(); g.stroke();
+    if (!col) { g.fillStyle = '#c99a10'; g.fillRect(0, -40, 3, 80); g.fillStyle = '#1d2a35'; rr(g, 2, -4, 9, 8, 2); g.fill(); g.fillStyle = '#c0392b'; g.fillRect(-2, -40, 16, 5); g.fillRect(-2, 35, 16, 5);
+      g.strokeStyle = 'rgba(20,20,20,.75)'; g.lineWidth = 1.4; const pa = v.prop % Math.PI; g.beginPath(); g.moveTo(29, -Math.cos(pa) * 9); g.lineTo(29, Math.cos(pa) * 9); g.stroke(); }
+    g.restore();
+  }
+  return { frame(dt) {
+    if (script === 'down') { v.ctrl.thr = -1; v.ctrl.steer = 0; }
+    else { v.ctrl.thr = (K('ArrowUp', 'KeyW') ? 1 : 0) - (K('ArrowDown', 'KeyS') ? 1 : 0); v.ctrl.steer = (K('ArrowRight', 'KeyD') ? 1 : 0) - (K('ArrowLeft', 'KeyA') ? 1 : 0); v.ctrl.hb = K('Space'); }
+    physics(dt);
+    const sp = hyp(v.vx, v.vy), tx = v.x + v.vx * .9, ty = v.y + v.vy * .9;
+    cam.x += (tx - cam.x) * Math.min(1, dt * 4.5); cam.y += (ty - cam.y) * Math.min(1, dt * 4.5);
+    const tz = (.95 - v.alt * .28 - Math.min(.16, sp / 2000)); cam.z += (tz - cam.z) * Math.min(1, dt * 1.8);
+    const F = fit(cv), { g, w, h } = F, ppu = w / 900 * cam.z; view(F, cam.x, cam.y, ppu);
+    g.fillStyle = '#8f8556'; g.fillRect(-600, -600, WW + 1200, WH + 1200); g.drawImage(ground, 0, 0, WW, WH);
+    const pk = .00125 * Math.min(1.2, cam.z);
+    if (v.alt > .02) { g.globalAlpha = .22; body(g, v.x + SUNX * v.alt * 110, v.y - SUNY * v.alt * 110 + v.alt * 30, 1, '#000'); g.globalAlpha = 1; }
+    else { g.globalAlpha = .28; body(g, v.x + 3, v.y + 2, 1, '#000'); g.globalAlpha = 1; body(g, v.x, v.y, 1); }
+    const sorted = blds.slice().sort((a, b) => hyp(b.x - cam.x, b.y - cam.y) - hyp(a.x - cam.x, a.y - cam.y));
+    for (const b of sorted) drawBuilding(g, b, cam.x, cam.y, pk);
+    if (v.alt > .02) { const hh = v.alt * 120, k = 1 + hh * pk, px = cam.x + (v.x - cam.x) * k, py = cam.y + (v.y - cam.y) * k; body(g, px, py, k * (1 + v.alt * .15)); }
+    if (v.pushMark) { const pm = v.pushMark; pm.life -= dt; if (pm.life <= 0) v.pushMark = null; else { g.globalAlpha = Math.min(1, pm.life); g.strokeStyle = '#ff4a2a'; g.lineWidth = 3 / ppu; g.beginPath(); g.arc(pm.x, pm.y, 30, 0, TAU); g.stroke(); g.globalAlpha = 1; } }
+    if (v.dead) { g.fillStyle = 'rgba(220,220,220,.5)'; for (let i = 0; i < 5; i++) { g.beginPath(); g.arc(v.x + Math.sin(performance.now() / 300 + i) * 12, v.y - i * 10, 10 + i * 3, 0, TAU); g.fill(); } }
+    toast.tick(dt);
+    const air = v.alt > .05, bar = '█'.repeat(Math.round(v.alt * 10)) + '░'.repeat(10 - Math.round(v.alt * 10));
+    setHTML(hud, `מהירות <b>${(v.vf || 0).toFixed(0)}</b> ${v.alt <= 0 ? '(המראה מעל 235)' : '(עולה מעל 215)'}<br>גובה <span class="mono">${bar}</span> <b>${v.alt.toFixed(2)}</b><br>${air ? '<span class="ok">באוויר: התנגשויות כבויות</span>' : '<span class="bad">על הקרקע: התנגשויות פעילות</span>'} · שלמות <b>${Math.max(0, v.hp) | 0}</b>/320`);
+  } };
+});
+
+/* =================================================================
+   8. pseudo-3D depth
+   ================================================================= */
+reg('depth', () => {
+  const cv = $('#cvDepth'), hud = $('#depHud'), kR = $('#depK'), wrong = $('#depWrong'), P = trackPointer(cv);
+  const R = RNG(5), blds = [];
+  const spots = [[180, 140], [330, 120], [520, 150], [720, 130], [900, 160], [160, 330], [380, 300], [700, 300], [900, 330], [200, 540], [400, 560], [620, 540], [860, 560], [540, 330]];
+  for (const [x, y] of spots) blds.push(mkRect(x + rr2(R, -20, 20), y + rr2(R, -20, 20), rr2(R, 34, 62), rr2(R, 26, 46), rr2(R, -.25, .25), { h: 26 * (1 + (R() * 4 | 0)), roof: ROOFS[R() * ROOFS.length | 0], wall: pick(['#efe6d6', '#d8cfbc', '#cfd8de', '#e6d8bc']) }));
+  let t = 0, ox = 0, oy = 0, lastDX = 0, lastDY = 0; const car = mkCar('car', 0, 430, 0);
+  return { frame(dt) {
+    t += dt; $('#depKo').textContent = (+kR.value).toFixed(1) + '×';
+    const F = fit(cv), { g, w, h } = F, ppu = w / 820;
+    if (P.down) { ox -= (P.dx - lastDX) / ppu; oy -= (P.dy - lastDY) / ppu; } lastDX = P.dx; lastDY = P.dy;
+    const auto = !P.recent(4000);
+    const cx = 540 + (auto ? Math.cos(t * .22) * 230 : 0) + ox, cy = 350 + (auto ? Math.sin(t * .3) * 150 : 0) + oy;
+    if (auto) { ox *= Math.exp(-dt * .5); oy *= Math.exp(-dt * .5); }
+    car.x = ((t * 140) % 1300) - 150; car.a = 0;
+    view(F, cx, cy, ppu);
+    g.fillStyle = '#62a845'; g.fillRect(-600, -600, 2300, 1900);
+    g.fillStyle = '#4c4e52'; g.fillRect(-600, 412, 2300, 36); g.fillRect(462, -600, 36, 1900);
+    g.fillStyle = 'rgba(255,255,255,.4)'; for (let x = -600; x < 1700; x += 40) g.fillRect(x, 429, 18, 2);
+    drawVeh(g, car);
+    const pk = .00125 * +kR.value;
+    const list = blds.slice().sort((a, b) => hyp(b.x - cx, b.y - cy) - hyp(a.x - cx, a.y - cy)); if (wrong.checked) list.reverse();
+    for (const b of list) drawBuilding(g, b, cx, cy, pk);
+    screenT(F); g.strokeStyle = 'rgba(255,255,255,.9)'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(w / 2 - 10, h / 2); g.lineTo(w / 2 + 10, h / 2); g.moveTo(w / 2, h / 2 - 10); g.lineTo(w / 2, h / 2 + 10); g.stroke();
+    setHTML(hud, `פקטור גג לבניין של 4 קומות (104): <b>×${(1 + 104 * pk).toFixed(3)}</b> · מיון: <b>${wrong.checked ? '<span class="bad">קרוב לפני רחוק</span>' : 'רחוק לפני קרוב'}</b>`);
+  } };
+});
+
+/* =================================================================
+   9. ground chunks
+   ================================================================= */
+reg('ground', () => {
+  const cv = $('#cvGround'), stats = $('#gStats'), bR = $('#gBudget'), cR = $('#gCache');
+  const WW = 6400, WH = 4800, CS = 256, NX = 25, NY = 19;
+  const map = document.createElement('canvas'); map.width = 640; map.height = 480;
+  { const g = map.getContext('2d'), R = RNG(19); g.scale(.1, .1); g.fillStyle = '#b3a663'; g.fillRect(0, 0, WW, WH);
+    const cols = ['#d8b04e', '#7c5a38', '#66a43f', '#6d955a', '#b69a5e'];
+    for (let x = 0; x < WW; x += 420) for (let y = 0; y < WH; y += 360) { if (hyp(x - 3150, y - 2250) < 1100) continue; g.fillStyle = cols[R() * cols.length | 0]; g.fillRect(x + rr2(R, 10, 40), y + rr2(R, 10, 40), rr2(R, 300, 380), rr2(R, 260, 320)); }
+    g.fillStyle = '#62a845'; g.beginPath(); g.ellipse(3150, 2250, 900, 700, 0, 0, TAU); g.fill();
+    g.strokeStyle = '#4c4e52'; g.lineWidth = 40; g.beginPath(); g.ellipse(3150, 2250, 760, 580, 0, 0, TAU); g.stroke();
+    g.strokeStyle = '#3d3f42'; g.lineWidth = 60; g.beginPath(); g.moveTo(0, 4100); g.lineTo(6400, 3500); g.stroke();
+    for (let i = 0; i < 220; i++) { const a = R() * TAU, r = R() * 650; g.fillStyle = ROOFS[R() * ROOFS.length | 0]; g.fillRect(3150 + Math.cos(a) * r * 1.2, 2250 + Math.sin(a) * r, 40, 30); }
+  }
+  const hatch = document.createElement('canvas'); hatch.width = hatch.height = 10; { const g = hatch.getContext('2d'); g.fillStyle = 'rgba(164,154,99,.95)'; g.fillRect(0, 0, 10, 10); g.strokeStyle = 'rgba(255,90,60,.9)'; g.lineWidth = 2; g.beginPath(); g.moveTo(0, 10); g.lineTo(10, 0); g.stroke(); }
+  let pat = null, mode = 'drive', frameN = 0, s = 0, totalB = 0, totalE = 0; const cache = new Map(), flashB = [], flashE = [], hist = [];
+  segGroup($('#gMode'), d => { mode = d.m; });
+  $('#gIos').onclick = () => { cR.value = 90; };
+  return { frame(dt) {
+    frameN++; const budget = +bR.value, MAXC = +cR.value; $('#gBudgetO').textContent = budget; $('#gCacheO').textContent = MAXC;
+    const fly = mode === 'fly', speed = fly ? 440 : 300; s += dt * speed / 2600;
+    const cx = 3200 + Math.cos(s) * 2500, cy = 2400 + Math.sin(s * 1.37) * 1750, vw = fly ? 2600 : 1100, vh = fly ? 1650 : 700;
+    const x0 = Math.max(0, Math.floor((cx - vw / 2) / CS)), x1 = Math.min(NX - 1, Math.floor((cx + vw / 2) / CS)), y0 = Math.max(0, Math.floor((cy - vh / 2) / CS)), y1 = Math.min(NY - 1, Math.floor((cy + vh / 2) / CS));
+    let baked = 0; const missing = [];
+    for (let b = y0; b <= y1; b++) for (let a = x0; a <= x1; a++) {
+      const k = a * 100 + b, c = cache.get(k);
+      if (c) c.used = frameN;
+      else if (baked < budget) { cache.set(k, { a, b, used: frameN }); baked++; totalB++; flashB.push({ a, b, life: .35 }); }
+      else missing.push([a, b]);
+    }
+    while (cache.size > MAXC) { let ok = null, ov = null; for (const [k, v] of cache) if (!ov || v.used < ov.used) { ov = v; ok = k; } cache.delete(ok); totalE++; flashE.push({ a: ov.a, b: ov.b, life: .6 }); }
+    hist.push(missing.length); if (hist.length > 140) hist.shift();
+    const F = fit(cv), { g, w, h } = F, ppu = w / WW; view(F, WW / 2, WH / 2, ppu);
+    g.drawImage(map, 0, 0, WW, WH);
+    g.fillStyle = 'rgba(12,14,10,.45)'; g.fillRect(0, 0, WW, WH);
+    for (const c of cache.values()) { const rec = Math.max(0, 1 - (frameN - c.used) / 600); g.fillStyle = `rgba(143,209,107,${.16 + rec * .38})`; g.fillRect(c.a * CS + 6, c.b * CS + 6, CS - 12, CS - 12); }
+    for (let i = flashB.length - 1; i >= 0; i--) { const f = flashB[i]; f.life -= dt; if (f.life <= 0) { flashB.splice(i, 1); continue; } g.fillStyle = `rgba(242,194,48,${f.life / .35})`; g.fillRect(f.a * CS + 6, f.b * CS + 6, CS - 12, CS - 12); }
+    if (!pat) pat = g.createPattern(hatch, 'repeat');
+    g.save(); g.setTransform(F.dpr, 0, 0, F.dpr, 0, 0); g.fillStyle = pat; for (const [a, b] of missing) g.fillRect(a * CS * ppu + 1, b * CS * ppu + 1, CS * ppu - 2, CS * ppu - 2); g.restore();
+    view(F, WW / 2, WH / 2, ppu);
+    for (let i = flashE.length - 1; i >= 0; i--) { const f = flashE[i]; f.life -= dt; if (f.life <= 0) { flashE.splice(i, 1); continue; } g.strokeStyle = `rgba(255,90,60,${f.life / .6})`; g.lineWidth = 30; g.strokeRect(f.a * CS + 15, f.b * CS + 15, CS - 30, CS - 30); }
+    if (flashE.length > 300) flashE.splice(0, flashE.length - 300);
+    g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 6; for (let a = 0; a <= NX; a++) { g.beginPath(); g.moveTo(a * CS, 0); g.lineTo(a * CS, WH); g.stroke(); } for (let b = 0; b <= NY; b++) { g.beginPath(); g.moveTo(0, b * CS); g.lineTo(WW, b * CS); g.stroke(); }
+    g.strokeStyle = '#fff'; g.lineWidth = 34; g.strokeRect(cx - vw / 2, cy - vh / 2, vw, vh);
+    screenT(F); const bw = 2, bh = 34, bx = 10, by = h - 10; g.fillStyle = 'rgba(16,18,14,.75)'; g.fillRect(bx - 4, by - bh - 18, 140 * bw + 8, bh + 22);
+    txt(g, 'ריבועים חסרים בכל פריים', bx + 140 * bw, by - bh - 9, 11, '#ebe6d1', 'right');
+    hist.forEach((n, i) => { const hh = Math.min(bh, n * 1.4); g.fillStyle = n ? '#ff7356' : '#8fd16b'; g.fillRect(bx + i * bw, by - Math.max(1, hh), bw - .3, Math.max(1, hh)); });
+    const vis = (x1 - x0 + 1) * (y1 - y0 + 1);
+    setHTML(stats, `במסך <b>${vis}</b> ריבועים · נאפו בפריים הזה <b>${baked}</b>/${budget} · חסרים עכשיו <b class="${missing.length ? 'bad' : 'ok'}">${missing.length}</b><br>במטמון <b>${cache.size}</b>/${MAXC} · נאפו סה״כ <b>${totalB}</b> · נזרקו סה״כ <b>${totalE}</b>`);
+  } };
+});
+
+/* =================================================================
+   10. population
+   ================================================================= */
+reg('pop', () => {
+  const cv = $('#cvPop'), hud = $('#popHud'), stop = $('#popStop');
+  let want = 30, t = 0, popT = 0, spawned = 0, removed = 0, skipped = 0; const peds = [], fx = [], pl = { x: 1500, y: 0, a: 0 };
+  segGroup($('#popDen'), d => { want = +d.d; });
+  const cows = []; for (let i = 0; i < 6; i++) cows.push({ x: 700 + (i % 3) * 60, y: 1100 + (i / 3 | 0) * 50, vx: 0, vy: 0, cow: 1, h: rnd(0, TAU) });
+  const VWH = 550, VHH = 350;
+  const onScreen = (x, y, m) => Math.abs(x - pl.x) < VWH + m && Math.abs(y - pl.y) < VHH + m;
+  return { frame(dt) {
+    t += dt;
+    if (!stop.checked) { pl.a += dt * 230 / 1500; pl.x = Math.cos(pl.a) * 1500; pl.y = Math.sin(pl.a) * 1500 * .75; }
+    popT -= dt;
+    if (popT <= 0) { popT = .4; let np = 0;
+      for (let i = peds.length - 1; i >= 0; i--) { const p = peds[i], d = hyp(p.x - pl.x, p.y - pl.y); if (d < 1300) np++; else { peds.splice(i, 1); removed++; fx.push({ x: p.x, y: p.y, k: 'x', life: .8 }); } }
+      for (let k = 0; k < 6 && np < want; k++) { const a = Math.random() * TAU, R = rnd(620, 1050), x = pl.x + Math.cos(a) * R, y = pl.y + Math.sin(a) * R; if (onScreen(x, y, 40)) { skipped++; continue; } peds.push({ x, y, h: rnd(0, TAU) }); np++; spawned++; fx.push({ x, y, k: 'o', life: .7 }); }
+    }
+    for (const p of peds.concat(cows)) { p.live = hyp(p.x - pl.x, p.y - pl.y) < 1200; if (!p.live) continue; p.h += rnd(-1.5, 1.5) * dt; const sp = p.cow ? 16 : 48; p.x += Math.cos(p.h) * sp * dt; p.y += Math.sin(p.h) * sp * dt; if (p.cow) { if (hyp(p.x - 760, p.y - 1125) > 70) p.h = Math.atan2(1125 - p.y, 760 - p.x); } }
+    const F = fit(cv), { g, w, h } = F, ppu = w / 4400; view(F, pl.x, pl.y, ppu);
+    g.fillStyle = '#2a3122'; g.fillRect(pl.x - 3000, pl.y - 2200, 6000, 4400);
+    g.strokeStyle = 'rgba(255,255,255,.05)'; g.lineWidth = 1 / ppu; for (let x = Math.floor((pl.x - 2400) / 400) * 400; x < pl.x + 2400; x += 400) { g.beginPath(); g.moveTo(x, pl.y - 1600); g.lineTo(x, pl.y + 1600); g.stroke(); } for (let y = Math.floor((pl.y - 1600) / 400) * 400; y < pl.y + 1600; y += 400) { g.beginPath(); g.moveTo(pl.x - 2400, y); g.lineTo(pl.x + 2400, y); g.stroke(); }
+    g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 2 / ppu; g.beginPath(); g.ellipse(0, 0, 1500, 1125, 0, 0, TAU); g.stroke();
+    g.fillStyle = 'rgba(143,209,107,.14)'; g.beginPath(); g.arc(pl.x, pl.y, 1050, 0, TAU); g.arc(pl.x, pl.y, 620, 0, TAU, true); g.fill();
+    g.strokeStyle = 'rgba(255,115,86,.9)'; g.lineWidth = 2.5 / ppu; g.beginPath(); g.arc(pl.x, pl.y, 1300, 0, TAU); g.stroke();
+    g.strokeStyle = 'rgba(235,230,209,.55)'; g.setLineDash([14 / ppu * .5, 10 / ppu * .5]); g.beginPath(); g.arc(pl.x, pl.y, 1200, 0, TAU); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = 'rgba(160,140,90,.6)'; g.lineWidth = 2 / ppu; g.strokeRect(690, 1060, 150, 130);
+    g.fillStyle = 'rgba(255,255,255,.1)'; g.fillRect(pl.x - VWH, pl.y - VHH, VWH * 2, VHH * 2); g.strokeStyle = '#fff'; g.lineWidth = 2.5 / ppu; g.strokeRect(pl.x - VWH, pl.y - VHH, VWH * 2, VHH * 2);
+    const r = 3.2 / ppu;
+    for (const p of peds) { g.fillStyle = p.live ? '#f2c230' : '#77786a'; g.beginPath(); g.arc(p.x, p.y, r, 0, TAU); g.fill(); }
+    for (const c of cows) { g.fillStyle = c.live ? '#f2f2f2' : '#77786a'; g.fillRect(c.x - r * 1.6, c.y - r, r * 3.2, r * 2); g.fillStyle = c.live ? '#222' : '#555'; g.fillRect(c.x - r * .4, c.y - r, r, r); }
+    for (let i = fx.length - 1; i >= 0; i--) { const f = fx[i]; f.life -= dt; if (f.life <= 0) { fx.splice(i, 1); continue; } g.globalAlpha = f.life; g.lineWidth = 2 / ppu;
+      if (f.k === 'o') { g.strokeStyle = '#8fd16b'; g.beginPath(); g.arc(f.x, f.y, (1.2 - f.life) * 60, 0, TAU); g.stroke(); } else { g.strokeStyle = '#ff7356'; const s = 22; g.beginPath(); g.moveTo(f.x - s, f.y - s); g.lineTo(f.x + s, f.y + s); g.moveTo(f.x + s, f.y - s); g.lineTo(f.x - s, f.y + s); g.stroke(); } }
+    g.globalAlpha = 1;
+    g.fillStyle = '#5cc0f2'; g.beginPath(); g.arc(pl.x, pl.y, 5 / ppu, 0, TAU); g.fill();
+    const live = peds.filter(p => p.live).length;
+    setHTML(hud, `חיים עכשיו <b>${peds.length}</b>/${want} (מתוכם בסימולציה <b>${live}</b>) · נולדו <b>${spawned}</b> · נמחקו <b>${removed}</b><br>נדחו כי היו על המסך <b>${skipped}</b> · פרות persistent: <b>${cows.length}</b>, ${cows[0].live ? 'בסימולציה' : '<span class="bad">קפואות</span>'}`);
+  } };
+});
+
+/* =================================================================
+   11a. ped state machine
+   ================================================================= */
+reg('ai', () => {
+  const host = $('#sm'), hpEl = $('#smHp'), tmEl = $('#smTimer'), logEl = $('#smLog'), heatC = $('#smHeat');
+  const N = { idle: [95, 52, 'עומד'], walk: [95, 168, 'הולך'], flee: [330, 52, 'בורח'], fight: [330, 168, 'מתקוטט'], chase: [330, 270, 'רודף'], ko: [560, 168, 'מעולף'] };
+  const E = [['walk', 'idle'], ['idle', 'walk'], ['walk', 'flee'], ['flee', 'walk'], ['idle', 'flee'], ['walk', 'fight'], ['fight', 'walk'], ['walk', 'chase'], ['chase', 'walk'], ['idle', 'chase'], ['flee', 'chase'],
+    ['walk', 'ko', 'up'], ['flee', 'ko'], ['fight', 'ko'], ['chase', 'ko'], ['ko', 'walk', 'down'], ['ko', 'flee'], ['ko', 'fight'], ['ko', 'chase']];
+  let svg = '<svg viewBox="0 0 660 310" role="img" aria-label="מכונת מצבים של דמות"><defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--line)"/></marker><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent-strong)"/></marker></defs>';
+  const pairs = new Set(E.map(e => e[0] + '>' + e[1]));
+  for (const [a, b, curve] of E) {
+    const [x1, y1] = N[a], [x2, y2] = N[b]; let dx = x2 - x1, dy = y2 - y1; const l = hyp(dx, dy); dx /= l; dy /= l;
+    const both = pairs.has(b + '>' + a) && !curve, off = both ? 7 : 0, px = -dy * off, py = dx * off;
+    let path;
+    if (curve) { const cx = (x1 + x2) / 2, cy = curve === 'up' ? 112 : 226; path = `M${x1 + 50},${y1 + (curve === 'up' ? -10 : 10)} Q${cx},${cy} ${x2 - 52},${y2 + (curve === 'up' ? -10 : 10)}`; }
+    else { const sx = x1 + dx * 56 + px, sy = y1 + dy * 26 + py, ex = x2 - dx * 58 + px, ey = y2 - dy * 26 + py; path = `M${sx},${sy} L${ex},${ey}`; }
+    svg += `<path class="edge" id="e-${a}-${b}" d="${path}" marker-end="url(#ah)"/>`;
+  }
+  for (const k in N) { const [x, y, l] = N[k]; svg += `<g class="node" id="n-${k}"><rect x="${x - 52}" y="${y - 20}" width="104" height="40" rx="10"/><text x="${x}" y="${y + 5}" text-anchor="middle">${l}</text></g>`; }
+  host.innerHTML = svg + '</svg>';
+  const TYPES = { elder: { hp: 3, name: 'ותיק' }, adult: { hp: 3, name: 'מבוגר' }, brawl: { hp: 3, name: 'מבוגר בריון', brawl: 1 }, kid: { hp: 2, name: 'ילד' } };
+  let type = 'elder', p, walkT = 0, lastEdge = null, edgeT = 0;
+  const log = s => { const li = document.createElement('li'); li.textContent = s; logEl.prepend(li); while (logEl.children.length > 5) logEl.lastChild.remove(); };
+  function setState(st, why, timer) {
+    if (st === p.state) { if (timer !== undefined) p.timer = timer; return; }
+    const prev = p.state; p.state = st; p.timer = timer || 0;
+    if (lastEdge) lastEdge.classList.remove('on'); lastEdge = document.getElementById(`e-${prev}-${st}`); if (lastEdge) { lastEdge.classList.add('on'); lastEdge.setAttribute('marker-end', 'url(#ah2)'); } edgeT = 2.5;
+    log(`${N[prev][2]} ← ${N[st][2]}: ${why}`);
+  }
+  function reset() { const T = TYPES[type]; p = { hp: T.hp, max: T.hp, state: 'walk', timer: 0, elder: type === 'elder', brawl: !!T.brawl }; logEl.innerHTML = ''; log(`${T.name} חדש מסתובב בקיבוץ (${T.hp} חיים${T.brawl ? ', בריון' : ''})`); }
+  reset();
+  segGroup($('#smType'), d => { type = d.t; reset(); });
+  $('#smHit').onclick = () => {
+    if (p.state === 'ko') { log('הוא כבר מעולף. אגרוף לא עושה כלום'); return; }
+    p.hp -= 1.5;
+    if (p.hp <= 0) { const t = p.elder ? 5 : 6.5; setState('ko', `חיים ≤ 0. מעולף ל-${t} שניות, מפיל מטבעות, +${p.elder ? '2.2' : '1.2'} רוגז`, t); return; }
+    if (p.state === 'chase') { log('נפגע, אבל רודף לא בורח. ממשיך לרדוף'); return; }
+    if (p.brawl) setState('fight', 'בריון שחטף אגרוף מחזיר (8 שניות)', 8);
+    else setState('flee', 'נפגע: בורח 4 שניות, +0.5 רוגז', 4);
+  };
+  $('#smHorn').onclick = () => { if (p.state === 'walk' || p.state === 'idle') setState('flee', 'צפירה! בורח 1.5 שניות', 1.5); else log('צפירה משפיעה רק על מי שהולך או עומד'); };
+  heatC.onchange = () => {
+    if (heatC.checked) { if (p.elder && ['walk', 'idle', 'flee'].includes(p.state)) setState('chase', 'רוגז מעל 0 וותיק בטווח 330: "תרד מהדשא!"'); else log('רוגז עלה. רק ותיקים, שומרים וגננים מצטרפים למרדף'); }
+    else { if (p.state === 'chase') setState('walk', 'הרוגז ירד ל-0: "הוועד שכח ממך... בינתיים"'); }
+  };
+  return { frame(dt) {
+    if (edgeT > 0) { edgeT -= dt; if (edgeT <= 0 && lastEdge) { lastEdge.classList.remove('on'); lastEdge.setAttribute('marker-end', 'url(#ah)'); } }
+    for (const k in N) document.getElementById('n-' + k).classList.toggle('on', p.state === k);
+    if (p.timer > 0) { p.timer -= dt; if (p.timer <= 0) {
+      p.timer = 0;
+      if (p.state === 'ko') { p.hp = p.max;
+        if (p.elder) { if (heatC.checked) setState('chase', 'התעורר עם רוגז: "אני מתלונן בוועד!" (+0.6 רוגז)'); else setState('walk', 'התעורר: "הגב שלי!" (+0.6 רוגז אם יש עד)'); }
+        else if (p.brawl && Math.random() < .6) setState('fight', 'בריון התעורר: "עכשיו תקבל!" (60%)', 7);
+        else setState('flee', 'התעורר ובורח 3 שניות', 3);
+      } else if (p.state === 'flee' || p.state === 'fight') setState('walk', 'נגמר הזמן, חוזר לשביל');
+      else if (p.state === 'idle') setState('walk', 'סיים לעמוד, ממשיך ללכת');
+    } }
+    if (p.state === 'walk') { walkT += dt; if (walkT > 2.2) { walkT = 0; if (Math.random() < .3) setState('idle', 'הגיע לצומת ועוצר לרגע', rnd(1, 4)); } }
+    let ph = ''; for (let i = 0; i < p.max; i++) ph += `<i class="${p.hp - i * 1 > 0 ? '' : 'off'}"></i>`;
+    setHTML(hpEl, ph); tmEl.textContent = p.timer > 0 ? `${p.timer.toFixed(1)} שנ׳` : '';
+  } };
+});
+
+/* =================================================================
+   11b. drivers on a road graph
+   ================================================================= */
+reg('ai', () => {
+  const cv = $('#cvRoad'), showC = $('#roadShow');
+  const XS = [110, 370, 630, 890], YS = [100, 312, 525], nodes = [];
+  for (let r = 0; r < 3; r++) for (let c = 0; c < 4; c++) nodes.push({ x: XS[c], y: YS[r], nb: [] });
+  const road = { kind: 'asphalt', w: 34 }, link = (a, b) => { nodes[a].nb.push({ n: nodes[b], r: road }); nodes[b].nb.push({ n: nodes[a], r: road }); };
+  [[0, 1], [1, 2], [2, 3], [4, 5], [5, 6], [6, 7], [8, 9], [10, 11], [0, 4], [4, 8], [1, 5], [2, 6], [6, 10], [3, 7], [7, 11], [5, 9]].forEach(([a, b]) => link(a, b));
+  const cars = [], decisions = [];
+  function pickNext(n, prev, a, v) {
+    let opts = n.nb.filter(e => e.n !== prev); if (!opts.length) opts = n.nb.slice(); if (!opts.length) return null;
+    const ws = opts.map(e => { const da = Math.abs(angDiff(a, Math.atan2(e.n.y - n.y, e.n.x - n.x))); return Math.max(.08, 1.4 - da) + Math.random() * .6; });
+    let best = 0; for (let i = 1; i < opts.length; i++) if (ws[i] > ws[best]) best = i;
+    if (opts.length > 1) decisions.push({ n, opts: opts.map((e, i) => ({ to: e.n, w: ws[i], ch: i === best })), life: 1.6 });
+    return opts[best];
+  }
+  function place(v, n, e) { const dx = e.n.x - n.x, dy = e.n.y - n.y, l = hyp(dx, dy) || 1, off = road.w * .25; v.prev = n; v.node = e.n; v.tgt = { x: e.n.x - dy / l * off, y: e.n.y + dx / l * off }; v.x = n.x - dy / l * off + dx / l * 40; v.y = n.y + dx / l * off + dy / l * 40; v.a = Math.atan2(dy, dx); }
+  const types = ['car', 'car', 'car', 'kalnoit', 'kalnoit', 'car', 'kalnoit'], cols = ['#c0392b', '#2c6fb5', '#f2f2f2', '#e8c547', '#d9d9de', '#3d8a52', '#c58bd6'];
+  const usedE = new Set();
+  types.forEach((t, i) => { const v = mkCar(t, 0, 0, 0); v.col = cols[i]; v.blocked = 0; v.rev = 0; v.stuckT = 0; let n, e, k; do { n = nodes[(Math.random() * nodes.length) | 0]; e = pick(n.nb); k = nodes.indexOf(n) + '-' + nodes.indexOf(e.n); } while (usedE.has(k)); usedE.add(k); place(v, n, e); cars.push(v); });
+  return { frame(dt) {
+    for (const v of cars) {
+      const ctrl = v.ctrl;
+      if (hyp(v.x - v.tgt.x, v.y - v.tgt.y) < Math.max(18, v.d.L * .45)) {
+        const n = v.node, e = pickNext(n, v.prev, v.a, v);
+        if (e) { v.prev = n; v.node = e.n; const dx = e.n.x - n.x, dy = e.n.y - n.y, l = hyp(dx, dy) || 1, off = road.w * .25; v.tgt = { x: e.n.x - dy / l * off, y: e.n.y + dx / l * off }; }
+      }
+      const desired = Math.atan2(v.tgt.y - v.y, v.tgt.x - v.x), diff = angDiff(v.a, desired);
+      ctrl.steer = clamp(diff * 2.6, -1, 1);
+      const cruise = Math.min(v.d.maxF * .8, 150);
+      ctrl.thr = Math.abs(diff) > 1 ? (v.vf > 40 ? -.4 : .5) : (v.vf < cruise ? 1 : v.vf > cruise * 1.15 ? -.3 : 0); ctrl.hb = false;
+      const fx = Math.cos(v.a), fy = Math.sin(v.a), la = v.d.L / 2 + 12 + Math.max(0, v.vf) * .25; v.px = v.x + fx * la; v.py = v.y + fy * la;
+      let blocked = false; for (const o of cars) { if (o === v) continue; if (hyp(v.px - o.x, v.py - o.y) < o.d.W / 2 + v.d.W / 2 + 4) { blocked = true; break; } }
+      v.isBlocked = blocked;
+      if (blocked) { ctrl.thr = v.vf > 10 ? -1 : 0; v.blocked += dt; } else v.blocked = Math.max(0, v.blocked - dt);
+      if (v.blocked > 3.5) { v.rev = 1.1; v.blocked = 0; }
+      if (v.rev > 0) { v.rev -= dt; ctrl.thr = -.8; ctrl.steer = -ctrl.steer; }
+      if (Math.abs(v.vf) < 6 && !blocked && v.rev <= 0) { v.stuckT += dt; if (v.stuckT > 2.2) { v.rev = 1; v.stuckT = 0; v.prev = null; } } else v.stuckT = 0;
+      carPhysics(v, dt, MAT.ROAD);
+    }
+    const F = fit(cv), { g, w, h } = F, ppu = w / 1000; view(F, 500, 312.5, ppu);
+    g.fillStyle = '#62a845'; g.fillRect(0, 0, 1000, 625);
+    g.strokeStyle = '#4c4e52'; g.lineCap = 'round'; g.lineWidth = road.w; g.beginPath(); const seen = new Set();
+    for (const n of nodes) for (const e of n.nb) { const k = [nodes.indexOf(n), nodes.indexOf(e.n)].sort().join(); if (seen.has(k)) continue; seen.add(k); g.moveTo(n.x, n.y); g.lineTo(e.n.x, e.n.y); } g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = 1.5; g.setLineDash([12, 12]); g.stroke(); g.setLineDash([]); g.lineCap = 'butt';
+    for (const v of cars) drawVeh(g, v);
+    if (showC.checked) {
+      for (const v of cars) { g.fillStyle = v.isBlocked ? '#ff4a2a' : '#fff'; g.beginPath(); g.arc(v.px, v.py, v.isBlocked ? 5 : 3, 0, TAU); g.fill(); }
+      for (let i = decisions.length - 1; i >= 0; i--) { const dcs = decisions[i]; dcs.life -= dt; if (dcs.life <= 0) { decisions.splice(i, 1); continue; } g.globalAlpha = Math.min(1, dcs.life);
+        for (const o of dcs.opts) { const dx = o.to.x - dcs.n.x, dy = o.to.y - dcs.n.y, l = hyp(dx, dy), ux = dx / l, uy = dy / l; arrow(g, dcs.n.x + ux * 14, dcs.n.y + uy * 14, ux * 50, uy * 50, o.ch ? '#8fd16b' : 'rgba(255,255,255,.75)', o.ch ? 3.5 : 2);
+          g.fillStyle = 'rgba(16,18,14,.8)'; g.fillRect(dcs.n.x + ux * 74 - 17, dcs.n.y + uy * 74 - 10, 34, 20); txt(g, o.w.toFixed(2), dcs.n.x + ux * 74, dcs.n.y + uy * 74 + 1, 12, o.ch ? '#8fd16b' : '#ebe6d1'); } }
+      g.globalAlpha = 1; if (decisions.length > 12) decisions.splice(0, decisions.length - 12);
+    }
+  } };
+});
+
+/* =================================================================
+   12. heat
+   ================================================================= */
+reg('heat', () => {
+  const LEVEL_AT = [0, .6, 3, 5.5, 8.5, 12], WANT = [0, 2, 3, 5, 6, 8];
+  const MSG = ['', 'הנויניק ראה אותך!', 'זה ייכנס לעלון! הזקנים יוצאים לקלנועיות', 'ועד הקיבוץ התכנס!', 'הקב״ט בדרך!', 'רכז המשק עלה על הטרקטור!'];
+  const lvlOf = h => { let l = 0; for (let i = 1; i < 6; i++) if (h >= LEVEL_AT[i]) l = i; return l; };
+  const kindFor = lvl => { const r = Math.random(); if (lvl <= 1) return pick(['ותיק ברגל', 'גנן ברגל']); if (lvl === 2) return r < .5 ? 'ותיק ברגל' : 'קלנועית'; if (lvl === 3) return r < .3 ? 'ותיק ברגל' : r < .7 ? 'קלנועית' : 'רכב גולף'; if (lvl === 4) return r < .35 ? 'קלנועית' : r < .6 ? 'רכב גולף' : 'טנדר קב״ט'; return r < .25 ? 'רכב גולף' : r < .6 ? 'טנדר קב״ט' : r < .82 ? 'טרקטור' : 'קלנועית'; };
+  let heat = 0, level = 0, unseen = 0, spawnT = 0, grab = 0, msgT = 0, chasers = [], lawn = false, grabbing = false;
+  const bar = $('#hBar'); LEVEL_AT.slice(1).forEach((v, i) => { const t = document.createElement('div'); t.className = 'tick'; t.style.left = (v / 16 * 100) + '%'; t.innerHTML = `<span>${'★'.repeat(i + 1)}</span>`; bar.appendChild(t); });
+  const msg = (s, d) => { $('#hMsg').textContent = s; msgT = d || 3; };
+  function crime(h) { if (!$('#hWit').checked) { msg('אף אחד לא ראה. זה לא קרה', 2); return; } heat = Math.min(16, heat + h); unseen = 0; }
+  $$('#hCrimes [data-h]').forEach(b => b.onclick = () => crime(+b.dataset.h));
+  const hold = (el, set) => { el.addEventListener('pointerdown', e => { e.preventDefault(); set(true); }); for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) el.addEventListener(ev, () => set(false)); el.addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') set(true); }); el.addEventListener('keyup', () => set(false)); };
+  hold($('#hLawn'), v => { lawn = v; }); hold($('#hGrabBtn'), v => { grabbing = v; });
+  const release = () => { chasers = []; };
+  $('#hGarage').onclick = () => { if (heat > 0) msg('המוסך צבע מחדש. אף אחד לא מזהה אותך', 2.5); heat = 0; level = 0; grab = 0; release(); };
+  $('#hClothes').onclick = () => { if (level > 0) { heat = Math.max(0, LEVEL_AT[level] - .05); if (lvlOf(heat) === 0) { heat = 0; release(); } msg('בגדים חדשים מהקומונה. מי זה הבחור הזה?', 2.5); } else msg('אין ממי להתחפש', 1.5); };
+  return { frame(dt) {
+    if (lawn) crime(.32 * dt * ($('#hHeavy').checked ? 1.8 : 1));
+    if (!$('#hSeen').checked || !chasers.length) { unseen += dt; if (unseen > 3 && heat > 0) heat = Math.max(0, heat - (.3 + .12 * level) * dt); } else unseen = Math.min(unseen, 1);
+    const l = lvlOf(heat);
+    if (l > level) msg(MSG[l]); else if (l < level && l === 0) { msg('הוועד שכח ממך... בינתיים', 3); release(); }
+    level = l;
+    if (level > 0) { spawnT -= dt; if (spawnT <= 0 && chasers.length < WANT[level]) { spawnT = 2.4 - level * .25; chasers.push(kindFor(level)); } }
+    if (grabbing && level > 0 && chasers.length) grab += dt * .7; else grab = Math.max(0, grab - dt * 1.4);
+    if (grab >= 1) { const fine = 80 + level * 60; msg(`נתפסת! הוחזרת לאסיפה כללית. קנס ${fine} ₪`, 4); grab = 0; heat = 0; level = 0; release(); }
+    if (msgT > 0) { msgT -= dt; if (msgT <= 0) $('#hMsg').textContent = ''; }
+    $$('#hStars span').forEach((s, i) => s.classList.toggle('on', i < level));
+    $('#hFill').style.width = (heat / 16 * 100) + '%';
+    $('#hNum').textContent = `רוגז ${heat.toFixed(2)} / 16`;
+    $('#hUnseen').textContent = heat > 0 ? (unseen > 3 ? `לא רואים אותך ${unseen.toFixed(1)} שנ׳: יורד ${(.3 + .12 * level).toFixed(2)}/שנ׳` : `לא רואים אותך ${unseen.toFixed(1)} / 3 שנ׳`) : '';
+    $('#hWant').textContent = `${chasers.length} / ${WANT[level]}`;
+    setHTML($('#hChasers'), chasers.length ? chasers.map(c => `<span class="chip ${/ברגל/.test(c) ? '' : 'v'}">${c}</span>`).join('') : '<span class="cap">אף אחד</span>');
+    $('#hGrab').style.width = (grab * 100) + '%';
+  } };
+});
+
+/* =================================================================
+   13. combat
+   ================================================================= */
+reg('combat', () => {
+  const cv = $('#cvCombat'), res = $('#cbRes');
+  const TG = { elder: { hp: 3, name: 'ותיק', ko: 5 }, adult: { hp: 3, name: 'מבוגר', ko: 6.5 }, kid: { hp: 2, name: 'ילד', ko: 6.5 }, cow: { animal: 1, name: 'פרה' }, chicken: { animal: 1, name: 'תרנגולת' } };
+  let W = 'fist', T = 'elder', sim = null;
+  function info() {
+    const t = TG[T];
+    if (t.animal) { const cow = T === 'cow'; return [['פגיעות עד עילפון', 'אף פעם'], ['מה קורה', cow ? 'אומרת "מוווו!" וזזה קצת. 99 חיים, לא מתעלפת' : 'בורחת בזיגזג, ‏2.5 שניות'], ['רוגז', 'בלי. אבל דריסה מאטה את הרכב'], ['למה', 'בחיות אין מצב ko. יש להן מכונת מצבים משלהן']]; }
+    const kc = t.hp, name = t.name, isE = T === 'elder';
+    const wake = isE ? 'קם ומתלונן: +0.6 רוגז, ועם רוגז חוזר לרדוף' : T === 'adult' ? 'בורח 3 שניות. בריון (30%): 60% שיחזור להתקוטט' : 'בורח 3 שניות';
+    const koH = isE ? 2.2 : 1.2;
+    switch (W) {
+      case 'fist': return [['פגיעות עד עילפון', `${Math.ceil(kc / 1.5)} אגרופים (1.5 כל אחד, כל 0.33 שנ׳)`], ['זמן עילפון', `${t.ko} שניות`], ['רוגז עם עד', `0.5 על כל מכה, +${koH} בעילפון`], ['אחרי שקם', wake]];
+      case 'toto': return [['פגיעות עד עילפון', `${Math.ceil(kc / 1.6)} יריות (1.6 כל אחת)`], ['זמן עילפון', `${t.ko} שניות`], ['רוגז עם עד', `0.45 על כל ירייה, 0.35 על פגיעה, +${koH} בעילפון`], ['אחרי שקם', wake]];
+      case 'soaker': return [['זמן עד עילפון', '0.77 שניות בזרם (רטיבות 1.3/שנ׳)'], ['זמן עילפון', '3.6 שניות'], ['רוגז עם עד', `כ-0.25 מדי פעם בזמן ריסוס, +${koH}`], ['שימו לב', 'טווח 140, קונוס צר. התחמושת נמדדת בשניות']];
+      case 'ext': return [['זמן עד עילפון', '0.45 שניות בענן (רטיבות 2.2/שנ׳)'], ['זמן עילפון', '3.6 שניות'], ['רוגז עם עד', `כ-0.25 מדי פעם, +${koH}`], ['בונוס', 'טווח 85, קונוס רחב. מעוור נהגים ל-1.4 שניות']];
+      case 'balloon': return [['פגיעות עד עילפון', 'אחת. כל מי שברדיוס 56'], ['זמן עילפון', '3.4 שניות'], ['רוגז עם עד', `+${koH} לכל מעולף`], ['כיוון', 'ננעל לבד על מטרה בטווח 60 עד 230 ובזווית 0.35']];
+      case 'car': return [['פגיעות עד עילפון', 'אחת, מעל מהירות 45'], ['זמן עילפון', `${isE ? 5 : 7} שניות`], ['רוגז עם עד', `+${koH}`], ['פיזיקה', 'הנפגע עף במהירות הרכב × 1.2. אופניים מאטים ב-40%']];
+    }
+  }
+  function render() { setHTML(res, info().map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('')); }
+  segGroup($('#cbW'), d => { W = d.w; render(); sim = null; }); segGroup($('#cbT'), d => { T = d.t; render(); sim = null; }); render();
+  function start() { const t = TG[T]; sim = { t: 0, hp: t.hp || 99, wet: 0, ko: 0, tx: 0, tvx: 0, shots: [], parts: [], say: '', sayT: 0, cd: 0, carX: -200, ball: null, done: false, flee: 0 }; }
+  $('#cbGo').onclick = start;
+  const hit = (dmg, s) => { const t = TG[T]; if (s.ko > 0) return; if (t.animal) { if (T === 'cow') { s.say = 'מוווו!'; s.sayT = 1.2; s.tvx += 40; } else { s.flee = 2.5; s.say = 'קוקוריקו!'; s.sayT = 1; } return; } s.hp -= dmg; s.tvx += 120; for (let i = 0; i < 6; i++) s.parts.push({ x: 0, y: 0, vx: rnd(-80, 80), vy: rnd(-90, 30), life: .4 }); if (s.hp <= 0) { s.ko = W === 'car' ? (T === 'elder' ? 5 : 7) : W === 'soaker' || W === 'ext' ? 3.6 : W === 'balloon' ? 3.4 : t.ko; s.say = ''; s.done = true; } else { s.say = pick(['אוי!', 'עזרה!', 'מה פתאום!', 'איי!']); s.sayT = .9; } };
+  return { frame(dt) {
+    const F = fit(cv), { g, w, h } = F; const sc = Math.min(w / 640, h / 360); g.setTransform(F.dpr * sc, 0, 0, F.dpr * sc, F.dpr * (w - 640 * sc) / 2, F.dpr * (h - 360 * sc) / 2);
+    g.fillStyle = '#b3a663'; g.fillRect(-200, -100, 1040, 560); g.fillStyle = '#c5bfae'; g.fillRect(-200, 150, 1040, 60);
+    const s = sim, baseX = 430;
+    let tx = baseX, ty = 180;
+    if (s) {
+      s.t += dt; s.cd -= dt; if (s.sayT > 0) s.sayT -= dt;
+      s.tx += s.tvx * dt; s.tvx *= Math.exp(-6 * dt); if (!s.ko && s.tx > 0 && s.tvx < 5) s.tx *= Math.exp(-dt * .8);
+      if (s.flee > 0) { s.flee -= dt; s.tx += 140 * dt * Math.sign(Math.sin(s.t * 9) + .3); }
+      const fire = !s.done && s.t > .3;
+      if (fire) switch (W) {
+        case 'fist': if (s.cd <= 0) { s.cd = .45; s.punch = .16; setTimeout(() => sim === s && hit(1.5, s), 80); } break;
+        case 'toto': if (s.cd <= 0) { s.cd = .3; s.shots.push({ x: 250, life: .6 }); } break;
+        case 'soaker': case 'ext': { const ext = W === 'ext'; for (let i = 0; i < 3; i++) s.parts.push({ x: 250 - baseX - s.tx, y: -2, vx: (ext ? rnd(130, 220) : rnd(300, 380)), vy: rnd(-1, 1) * (ext ? 90 : 30), life: ext ? .7 : .45, w: 1, ext }); if (!TG[T].animal) { s.wet += dt * (ext ? 2.2 : 1.3); if (s.wet > 1) hit(99, s); } else if (s.t > 1 && s.cd <= 0) { s.cd = 1.5; hit(0, s); } } break;
+        case 'balloon': if (!s.ball) s.ball = { t: 0 }; break;
+        case 'car': s.carX += 330 * dt; if (s.carX > baseX + s.tx - 40 && !s.hitCar) { s.hitCar = 1; if (TG[T].animal) hit(0, s); else { s.tvx += 380; hit(99, s); } } break;
+      }
+      for (let i = s.shots.length - 1; i >= 0; i--) { const b = s.shots[i]; b.x += 560 * dt; b.life -= dt; if (b.x > baseX + s.tx - 8) { s.shots.splice(i, 1); hit(1.6, s); } else if (b.life <= 0) s.shots.splice(i, 1); }
+      if (s.ball) { s.ball.t += dt; if (s.ball.t >= .6) { s.ball = null; s.done = !TG[T].animal || true; for (let i = 0; i < 20; i++) s.parts.push({ x: 0, y: 0, vx: rnd(-130, 130), vy: rnd(-130, 60), life: .5, splash: 1 }); hit(99, s); } }
+      if (s.ko > 0) { s.ko -= dt; if (s.ko <= 0) { s.ko = 0; s.hp = TG[T].hp; s.say = T === 'elder' ? 'אני מתלונן בוועד!' : 'עכשיו אני בורח!'; s.sayT = 1.8; s.wet = 0; } }
+      tx = baseX + s.tx;
+    }
+    // shooter
+    const px = 230 + (s && s.punch > 0 ? 16 : 0); if (s && s.punch > 0) s.punch -= dt;
+    if (W === 'car') { const cx = s ? s.carX : -200; g.save(); g.translate(Math.min(cx, 900), 180); drawVeh(g, { d: VT.car, x: 0, y: 0, a: 0, col: '#c0392b' }); g.restore(); }
+    else { g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(px, 192, 14, 6, 0, 0, TAU); g.fill(); g.fillStyle = '#2f6fd0'; g.beginPath(); g.arc(px, 180, 12, 0, TAU); g.fill(); g.fillStyle = '#f1c9a0'; g.beginPath(); g.arc(px + 2, 180, 7, 0, TAU); g.fill(); g.fillStyle = '#d8c48a'; g.fillRect(px - 5, 172, 12, 4); }
+    if (s) for (const b of s.shots) { g.fillStyle = '#fff'; g.fillRect(b.x - 4, 176, 8, 6); g.fillStyle = '#e33'; g.fillRect(b.x - 2, 177, 2, 2); }
+    if (s && s.ball) { const k = s.ball.t / .6, bx = lerp(250, tx, k), by = 180 - Math.sin(k * Math.PI) * 60; g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(bx, 190, 5, 3, 0, 0, TAU); g.fill(); g.fillStyle = '#4db8f0'; g.beginPath(); g.arc(bx, by, 7, 0, TAU); g.fill(); }
+    // target
+    const t = TG[T], ko = s && s.ko > 0;
+    g.save(); g.translate(tx, ty);
+    if (T === 'cow') { g.fillStyle = '#f2f2f2'; rr(g, -26, -14, 52, 28, 10); g.fill(); g.fillStyle = '#222'; g.beginPath(); g.arc(-8, -4, 6, 0, TAU); g.arc(10, 6, 5, 0, TAU); g.fill(); g.fillStyle = '#e8b4a8'; g.fillRect(24, -6, 8, 12); }
+    else if (T === 'chicken') { g.fillStyle = '#fff'; g.beginPath(); g.arc(0, 0, 8, 0, TAU); g.fill(); g.fillStyle = '#d32'; g.fillRect(-2, -10, 4, 4); g.fillStyle = '#f2a93b'; g.fillRect(7, -1, 4, 2); }
+    else { if (ko) g.rotate(Math.PI / 2); const r = T === 'kid' ? 9 : 12; g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(0, 12, r + 2, 5, 0, 0, TAU); g.fill(); g.fillStyle = T === 'elder' ? '#8a7a5a' : T === 'kid' ? '#ff7ab8' : '#3d8a52'; g.beginPath(); g.arc(0, 0, r, 0, TAU); g.fill(); g.fillStyle = '#f1c9a0'; g.beginPath(); g.arc(-2, 0, r * .6, 0, TAU); g.fill(); if (T === 'elder') { g.fillStyle = '#ddd'; g.fillRect(-6, -7, 8, 4); } if (s && s.wet > 0 && !ko) { g.fillStyle = `rgba(90,170,240,${Math.min(.7, s.wet * .7)})`; g.beginPath(); g.arc(0, 0, r + 1, 0, TAU); g.fill(); } }
+    g.restore();
+    if (s) for (let i = s.parts.length - 1; i >= 0; i--) { const p = s.parts[i]; p.life -= dt; if (p.life <= 0) { s.parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; if (!p.w) p.vy += 300 * dt; g.globalAlpha = Math.min(1, p.life * 3); g.fillStyle = p.ext ? '#f4f4f4' : p.w || p.splash ? '#7fd0ff' : '#ffe14a'; const ax = p.w ? baseX + s.tx + p.x : tx + p.x; g.beginPath(); g.arc(ax, ty + p.y, p.ext ? 6 : 2.5, 0, TAU); g.fill(); }
+    g.globalAlpha = 1;
+    if (ko) { for (let i = 0; i < 3; i++) { const a = performance.now() / 200 + i * 2.1; g.fillStyle = i % 2 ? '#ffe14a' : '#fff'; g.beginPath(); g.arc(tx + Math.cos(a) * 16, ty - 20 + Math.sin(a) * 5, 3, 0, TAU); g.fill(); } txt(g, `ko · ${s.ko.toFixed(1)} שנ׳`, tx, ty - 40, 14, '#fff'); }
+    if (s && s.sayT > 0 && s.say) { g.fillStyle = '#fff'; rr(g, tx - 52, ty - 66, 104, 24, 8); g.fill(); txt(g, s.say, tx, ty - 54, 13, '#222'); }
+    if (!t.animal && s) { const hp = Math.max(0, s.hp) / t.hp; g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(tx - 24, ty + 24, 48, 6); g.fillStyle = hp > .5 ? '#8fd16b' : '#ff7356'; g.fillRect(tx - 24, ty + 24, 48 * hp, 6); }
+    if (!s) txt(g, 'לחץ "הדגם"', 320, 60, 16, 'rgba(0,0,0,.45)');
+    else if (s.done && !ko && s.t > 1.5 && !t.animal) txt(g, 'קם. במשחק הוא היה ממשיך לפי מכונת המצבים', 320, 60, 14, 'rgba(0,0,0,.5)');
+  } };
+});
+
+/* =================================================================
+   14. procedural assets: sprite, sound, seed
+   ================================================================= */
+reg('assets', () => {
+  const cv = $('#cvSprite'), hud = $('#spHud'); let type = 'car', col = '#c0392b', step = 9, stepT = 0; const cache = new Map();
+  const STEPS = ['צל', 'גוף עם הצללה', 'גג וחלונות', 'גלגלים', 'פנסים ופרטים'];
+  segGroup($('#spType'), d => { type = d.t; step = 9; }); segGroup($('#spCol'), d => { col = d.c; step = 9; });
+  $('#spDraw').onclick = () => { step = 0; stepT = 0; };
+  function drawSprite(g, t, c, upTo) {
+    const d = VT[t], L = d.L, W = d.W;
+    if (upTo >= 0) { g.fillStyle = 'rgba(0,0,0,.3)'; rr(g, -L / 2 + 3, -W / 2 + 4, L, W, 6); g.fill(); }
+    if (upTo >= 1) { const gr = g.createLinearGradient(0, -W / 2, 0, W / 2); gr.addColorStop(0, shade(c, .25)); gr.addColorStop(.5, c); gr.addColorStop(1, shade(c, -.35)); g.fillStyle = gr; if (t === 'tractor') { rr(g, -L / 2, -W / 2 + 6, L, W - 12, 5); g.fill(); rr(g, L * .05, -W / 2 + 9, L * .43, W - 18, 4); g.fillStyle = shade(c, -.2); g.fill(); } else { rr(g, -L / 2, -W / 2, L, W, Math.min(7, W / 3)); g.fill(); } }
+    if (upTo >= 2) { if (t === 'kalnoit') { g.fillStyle = '#e8e8e8'; rr(g, -L * .38, -W / 2 + 1, L * .5, W - 2, 4); g.fill(); g.fillStyle = 'rgba(29,42,53,.8)'; rr(g, L * .14, -W / 2 + 3, L * .16, W - 6, 2); g.fill(); }
+      else if (t === 'tractor') { g.fillStyle = 'rgba(29,42,53,.85)'; rr(g, -L * .34, -W / 2 + 10, L * .3, W - 20, 3); g.fill(); g.fillStyle = 'rgba(255,255,255,.3)'; g.fillRect(-L * .34, -W / 2 + 10, L * .3, 2); }
+      else { const gl = g.createLinearGradient(L * .06, 0, L * .26, 0); gl.addColorStop(0, '#1d2a35'); gl.addColorStop(.6, '#3b5568'); gl.addColorStop(1, '#1d2a35'); g.fillStyle = gl; rr(g, L * .06, -W / 2 + 3, L * .19, W - 6, 3); g.fill(); g.fillStyle = 'rgba(255,255,255,.22)'; rr(g, -L * .3, -W / 2 + 3, L * .32, W - 6, 3); g.fill(); g.fillStyle = 'rgba(29,42,53,.7)'; rr(g, -L * .4, -W / 2 + 4, L * .08, W - 8, 2); g.fill(); } }
+    if (upTo >= 3) { g.fillStyle = '#1e1e1e'; if (t === 'tractor') { g.fillRect(-L / 2 + 2, -W / 2 - 1, 22, 8); g.fillRect(-L / 2 + 2, W / 2 - 7, 22, 8); g.fillRect(L / 2 - 16, -W / 2 + 2, 12, 6); g.fillRect(L / 2 - 16, W / 2 - 8, 12, 6); g.fillStyle = '#444'; for (let x = -L / 2 + 4; x < -L / 2 + 24; x += 4) { g.fillRect(x, -W / 2 - 1, 2, 8); g.fillRect(x, W / 2 - 7, 2, 8); } }
+      else for (const [x, y] of [[-L * .3, -W / 2 - 1], [L * .22, -W / 2 - 1], [-L * .3, W / 2 - 2], [L * .22, W / 2 - 2]]) g.fillRect(x - 4, y, 8, 3); }
+    if (upTo >= 4) { g.fillStyle = '#fff6c8'; g.fillRect(L / 2 - 2, -W / 2 + 2, 2, 4); g.fillRect(L / 2 - 2, W / 2 - 6, 2, 4); g.fillStyle = '#c0392b'; g.fillRect(-L / 2, -W / 2 + 2, 2, 4); g.fillRect(-L / 2, W / 2 - 6, 2, 4); if (t === 'tractor') { g.fillStyle = '#ffb000'; g.beginPath(); g.arc(-L * .2, 0, 2.5, 0, TAU); g.fill(); g.fillStyle = '#333'; g.fillRect(L * .3, -3, 4, 6); } }
+  }
+  // sound
+  let ac = null; const A = () => { if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (!C) return null; ac = new C(); } if (ac.state === 'suspended') ac.resume(); return ac; };
+  const SND = {
+    horn(a) { const t = a.currentTime, gn = a.createGain(); gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(.16, t + .02); gn.gain.setValueAtTime(.16, t + .38); gn.gain.linearRampToValueAtTime(0, t + .45); const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 1800; f.connect(gn); gn.connect(a.destination); for (const fr of [392, 494]) { const o = a.createOscillator(); o.type = 'square'; o.frequency.value = fr; o.connect(f); o.start(t); o.stop(t + .46); } },
+    moo(a) { const t = a.currentTime, o = a.createOscillator(), gn = a.createGain(), f = a.createBiquadFilter(), lfo = a.createOscillator(), lg = a.createGain(); o.type = 'sawtooth'; o.frequency.setValueAtTime(150, t); o.frequency.linearRampToValueAtTime(175, t + .3); o.frequency.linearRampToValueAtTime(110, t + 1.1); f.type = 'lowpass'; f.frequency.setValueAtTime(400, t); f.frequency.linearRampToValueAtTime(900, t + .35); f.frequency.linearRampToValueAtTime(300, t + 1.1); f.Q.value = 6; lfo.frequency.value = 5.5; lg.gain.value = 4; lfo.connect(lg); lg.connect(o.frequency); gn.gain.setValueAtTime(0, t); gn.gain.linearRampToValueAtTime(.3, t + .12); gn.gain.linearRampToValueAtTime(.24, t + .8); gn.gain.linearRampToValueAtTime(0, t + 1.15); o.connect(f); f.connect(gn); gn.connect(a.destination); o.start(t); lfo.start(t); o.stop(t + 1.2); lfo.stop(t + 1.2); },
+    bell(a) { const t = a.currentTime; for (const [fr, v] of [[2093, .12], [2637, .07], [4186, .04]]) for (const off of [0, .14]) { const o = a.createOscillator(), gn = a.createGain(); o.type = 'sine'; o.frequency.value = fr; gn.gain.setValueAtTime(v, t + off); gn.gain.exponentialRampToValueAtTime(.0001, t + off + .5); o.connect(gn); gn.connect(a.destination); o.start(t + off); o.stop(t + off + .55); } },
+    thud(a) { const t = a.currentTime, len = a.sampleRate * .25, buf = a.createBuffer(1, len, a.sampleRate), ch = buf.getChannelData(0); for (let i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3); const src = a.createBufferSource(); src.buffer = buf; const f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 700; const gn = a.createGain(); gn.gain.value = .7; src.connect(f); f.connect(gn); gn.connect(a.destination); src.start(t); const o = a.createOscillator(), g2 = a.createGain(); o.frequency.setValueAtTime(140, t); o.frequency.exponentialRampToValueAtTime(45, t + .15); g2.gain.setValueAtTime(.5, t); g2.gain.exponentialRampToValueAtTime(.001, t + .18); o.connect(g2); g2.connect(a.destination); o.start(t); o.stop(t + .2); },
+    coin(a) { const t = a.currentTime; [[988, 0], [1319, .07]].forEach(([fr, off]) => { const o = a.createOscillator(), gn = a.createGain(); o.type = 'square'; o.frequency.value = fr; gn.gain.setValueAtTime(.09, t + off); gn.gain.exponentialRampToValueAtTime(.001, t + off + .25); o.connect(gn); gn.connect(a.destination); o.start(t + off); o.stop(t + off + .26); }); },
+  };
+  window.__sfx = n => { const a = A(); if (a && SND[n]) SND[n](a); };
+  $$('[data-snd]').forEach(b => b.onclick = () => window.__sfx(b.dataset.snd));
+  const seedGo = () => { const sd = parseInt($('#seedIn').value, 10) || 0, R = RNG(sd); const xs = []; for (let i = 0; i < 8; i++) xs.push(R().toFixed(4)); $('#seedOut').textContent = `RNG(${sd}) -> ` + xs.join('  '); };
+  $('#seedGo').onclick = seedGo; seedGo();
+  return { frame(dt) {
+    if (step < 5) { stepT += dt; if (stepT > .7) { stepT = 0; step++; } }
+    const F = fit(cv), { g, w, h } = F; screenT(F); g.fillStyle = '#2a2e24'; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(255,255,255,.05)'; for (let x = 0; x < w; x += 16) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); } for (let y = 0; y < h; y += 16) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+    const big = Math.min(w * .55 / VT[type].L, h * .6 / VT[type].W, 6);
+    g.save(); g.translate(w * .38, h * .5); g.scale(big, big); drawSprite(g, type, col, Math.min(step, 4)); g.restore();
+    const key = type + '|' + col;
+    if (step >= 5) { if (!cache.has(key)) cache.set(key, 1); }
+    g.save(); g.translate(w * .82, h * .5); g.scale(1.4, 1.4); if (step >= 5) drawSprite(g, type, col, 4); g.restore();
+    txt(g, step >= 5 ? 'במטמון, בגודל אמיתי' : 'עוד לא במטמון', w * .82, h * .5 + 40, 12, '#ebe6d1');
+    const sname = step < 5 ? `שלב ${Math.min(step, 4) + 1}/5: ${STEPS[Math.min(step, 4)]}` : 'מוכן';
+    setHTML(hud, `<b>${VT[type].name}</b> · ${sname}<br>מפתח מטמון <span class="mono">${key}</span> · נוצרו ${cache.size} ספרייטים`);
+  } };
+});
+
+/* =================================================================
+   16. feel / juice
+   ================================================================= */
+reg('feel', () => {
+  const cv = $('#cvFeel'), opts = {}; $$('#feelOpts input').forEach(i => { opts[i.dataset.j] = i.checked; i.onchange = () => opts[i.dataset.j] = i.checked; });
+  const setAll = v => $$('#feelOpts input').forEach(i => { i.checked = v; opts[i.dataset.j] = v; });
+  $('#feelAll').onclick = () => setAll(true); $('#feelNone').onclick = () => setAll(false);
+  const st = { hp: 3, x: 0, vx: 0, flash: 0, ko: 0, punch: 0, shake: 0, parts: [], say: '', sayT: 0, floats: [], hits: 0 };
+  const punch = () => {
+    if (st.punch > 0) return; st.punch = .16;
+    setTimeout(() => {
+      if (st.ko > 0) return; st.hp -= 1.5; st.hits++;
+      if (opts.knock) st.vx += 220; if (opts.flash) st.flash = .1; if (opts.shake) st.shake = Math.min(9, st.shake + 4);
+      if (opts.particles) for (let i = 0; i < 8; i++) st.parts.push({ x: 0, y: 0, vx: rnd(-90, 120), vy: rnd(-120, 20), life: .45 });
+      if (opts.speech) { st.say = pick(['אוי!', 'עזרה!', 'מה פתאום!', 'בזמני היו מעיפים על זה מהחברות!', 'אני כותב לעלון!']); st.sayT = 1.3; }
+      if (opts.sound && window.__sfx) window.__sfx('thud');
+      if (st.hp <= 0) { st.ko = 2.4; if (opts.particles) st.floats.push({ t: '+12', life: 1 }); if (opts.sound && window.__sfx) setTimeout(() => window.__sfx('coin'), 150); }
+    }, 70);
+  };
+  $('#feelHit').onclick = punch; cv.addEventListener('pointerdown', punch);
+  if (!DEMO.__sfxReady) { DEMO.__sfxReady = 1; for (const d of DEMO.assets || []) if (!d.inst) d.inst = d.fn(); }
+  return { frame(dt) {
+    st.punch = Math.max(0, st.punch - dt); st.flash = Math.max(0, st.flash - dt); if (st.sayT > 0) st.sayT -= dt;
+    st.x += st.vx * dt; st.vx *= Math.exp(-7 * dt); st.x *= Math.exp(-dt * 1.2);
+    if (st.ko > 0) { st.ko -= dt; if (st.ko <= 0) { st.hp = 3; st.say = opts.speech ? 'אני מתלונן בוועד!' : ''; st.sayT = 1.4; } }
+    const sx = (Math.random() - .5) * st.shake * 2, sy = (Math.random() - .5) * st.shake * 2; st.shake *= Math.exp(-7 * dt);
+    const F = fit(cv), { g, w, h } = F, sc = Math.min(w / 640, h / 400);
+    g.setTransform(F.dpr * sc, 0, 0, F.dpr * sc, F.dpr * ((w - 640 * sc) / 2 + sx), F.dpr * ((h - 400 * sc) / 2 + sy));
+    g.fillStyle = '#62a845'; g.fillRect(-60, -60, 760, 520); g.fillStyle = 'rgba(255,255,255,.06)'; for (let x = -60; x < 700; x += 30) g.fillRect(x, -60, 15, 520);
+    g.fillStyle = '#c5bfae'; g.fillRect(-60, 250, 760, 46);
+    const px = 250 + (st.punch > 0 ? 18 : 0), py = 200, tx = 330 + st.x, ty = 200;
+    g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(px, py + 14, 16, 6, 0, 0, TAU); g.fill();
+    g.fillStyle = '#2f6fd0'; g.beginPath(); g.arc(px, py, 14, 0, TAU); g.fill(); g.fillStyle = '#f1c9a0'; g.beginPath(); g.arc(px + 2, py, 8, 0, TAU); g.fill(); g.fillStyle = '#d8c48a'; g.fillRect(px - 6, py - 9, 14, 5);
+    if (st.punch > 0) { g.fillStyle = '#f1c9a0'; g.beginPath(); g.arc(px + 20, py + 4, 5, 0, TAU); g.fill(); }
+    g.save(); g.translate(tx, ty); if (st.ko > 0) g.rotate(Math.PI / 2);
+    g.fillStyle = 'rgba(0,0,0,.2)'; g.beginPath(); g.ellipse(0, 14, 16, 6, 0, 0, TAU); g.fill();
+    g.fillStyle = st.flash > 0 ? '#fff' : '#8a7a5a'; g.beginPath(); g.arc(0, 0, 14, 0, TAU); g.fill(); g.fillStyle = st.flash > 0 ? '#fff' : '#f1c9a0'; g.beginPath(); g.arc(-2, 0, 8, 0, TAU); g.fill(); g.fillStyle = '#ddd'; g.fillRect(-7, -8, 9, 4);
+    g.restore();
+    for (let i = st.parts.length - 1; i >= 0; i--) { const p = st.parts[i]; p.life -= dt; if (p.life <= 0) { st.parts.splice(i, 1); continue; } p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 320 * dt; g.globalAlpha = Math.min(1, p.life * 3); g.fillStyle = i % 2 ? '#fff' : '#ffe14a'; g.fillRect(tx + p.x - 2, ty + p.y - 2, 4, 4); }
+    g.globalAlpha = 1;
+    if (st.ko > 0 && opts.particles) for (let i = 0; i < 3; i++) { const a = performance.now() / 200 + i * 2.1; g.fillStyle = i % 2 ? '#ffe14a' : '#fff'; g.beginPath(); g.arc(tx + Math.cos(a) * 18, ty - 22 + Math.sin(a) * 5, 3, 0, TAU); g.fill(); }
+    for (let i = st.floats.length - 1; i >= 0; i--) { const f = st.floats[i]; f.life -= dt; if (f.life <= 0) { st.floats.splice(i, 1); continue; } g.globalAlpha = Math.min(1, f.life * 2); txt(g, f.t, tx, ty - 50 - (1 - f.life) * 30, 20, '#ffe14a'); }
+    g.globalAlpha = 1;
+    if (st.sayT > 0 && st.say) { g.font = '600 14px Heebo, sans-serif'; const tw = Math.min(300, g.measureText(st.say).width + 20); g.fillStyle = '#fff'; rr(g, tx - tw / 2, ty - 78, tw, 26, 9); g.fill(); txt(g, st.say, tx, ty - 65, 14, '#222'); }
+    const anyOn = Object.values(opts).some(Boolean);
+    txt(g, `חיים ${Math.max(0, st.hp).toFixed(1)} / 3${st.ko > 0 ? ` · ko ${st.ko.toFixed(1)}` : ''}`, 320, 350, 15, 'rgba(0,0,0,.6)');
+    if (!anyOn) txt(g, 'אותה מכה בדיוק. בלי שום משוב', 320, 60, 15, 'rgba(0,0,0,.55)');
+  } };
+});
+
+/* =================================================================
+   run
+   ================================================================= */
+fromHash();
+let last = performance.now();
+function tick(now) {
+  const dt = Math.min(.05, Math.max(0, (now - last) / 1000)); last = now;
+  const key = slides[cur].dataset.key;
+  for (const d of DEMO[key] || []) { if (!d.inst) d.inst = d.fn(); try { d.inst.frame(dt); } catch (e) { console.error(e); } }
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+</script>
+
+<script data-goatcounter="https://gtkibbutz.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
+</body></html>
